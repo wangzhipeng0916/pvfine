@@ -35,12 +35,16 @@ type ExportRequest struct {
 }
 
 type ExportPreview struct {
-	ID              string              `json:"id"`
-	FileCount       int                 `json:"fileCount"`
-	DependencyCount int                 `json:"dependencyCount"`
-	SkippedDeletes  int                 `json:"skippedDeletes"`
-	Warnings        []string            `json:"warnings"`
-	Files           []ExportPreviewFile `json:"files"`
+	ID              string `json:"id"`
+	FileCount       int    `json:"fileCount"`
+	DependencyCount int    `json:"dependencyCount"`
+	// ReferenceDependencies counts entries added because the package's own files
+	// reference them (scripts, animations, particles) — the class of dependency the
+	// table pass cannot see.
+	ReferenceDependencies int                 `json:"referenceDependencies"`
+	SkippedDeletes        int                 `json:"skippedDeletes"`
+	Warnings              []string            `json:"warnings"`
+	Files                 []ExportPreviewFile `json:"files"`
 }
 
 type ExportPreviewFile struct {
@@ -76,6 +80,9 @@ type ExportService struct {
 	plan     *exportPlan
 	registry *modpkg.Registry
 	expiry   *time.Timer
+	// Same cache the extraction service uses, so "which relation table and which
+	// warmed indexes" has one definition instead of two that can drift.
+	scanners scannerCache
 }
 
 func NewExportService(c *core) *ExportService {
@@ -214,6 +221,17 @@ func (s *ExportService) Prepare(request ExportRequest) (result *ExportPreview, r
 			}
 			p.preview.DependencyCount = count
 			developmentLog("[pvfine:export] prepare phase=dependencies entries=%d elapsed=%s", count, time.Since(phaseStarted).Round(time.Millisecond))
+			// 文字表依赖补齐按设计不覆盖脚本/动画/粒子，所以引用闭包补齐是另一层：
+			// 少了它，MOD 发出去才会发现引用的文件没跟着走。
+			phaseStarted = time.Now()
+			referenced, notes, err := s.addExportReferenceClosureLocked(source, &p.pkg, format.Writer)
+			if err != nil {
+				return nil, err
+			}
+			p.preview.ReferenceDependencies = referenced
+			p.preview.Warnings = append(p.preview.Warnings, notes...)
+			developmentLog("[pvfine:export] prepare phase=reference-closure entries=%d notes=%d elapsed=%s",
+				referenced, len(notes), time.Since(phaseStarted).Round(time.Millisecond))
 		}
 		if source.skippedTables > 0 {
 			p.preview.Warnings = append(p.preview.Warnings, fmt.Sprintf("缺少准确的改动基线，跳过 %d 个 lst/str 文件；补齐依赖仅添加匹配条目", source.skippedTables))
