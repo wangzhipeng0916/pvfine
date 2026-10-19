@@ -26,6 +26,7 @@ import { useBookmarkStore, type BookmarkInput } from "../stores/bookmarks";
 import { useBatchStore } from "../stores/batch";
 import { useImportStore } from "../stores/import";
 import { useExportStore } from "../stores/export";
+import { useExtractionStore } from "../stores/extraction";
 import { useSettingsStore } from "../stores/settings";
 import { useRuleEditorStore } from "../stores/ruleEditor";
 import FileTree from "./FileTree.vue";
@@ -38,6 +39,7 @@ const fileSets = useFileSetStore();
 const bookmarks = useBookmarkStore();
 const batch = useBatchStore();
 const importer = useImportStore();
+const extraction = useExtractionStore();
 const settings = useSettingsStore();
 const message = useMessage();
 const dialog = useDialog();
@@ -48,6 +50,7 @@ const showCheckboxes = ref(false);
 const adding = ref(false);
 const bookmarking = ref(false);
 const exporting = ref(false);
+const extracting = ref(false);
 const copying = ref(false);
 const batching = ref(false);
 const creating = ref(false);
@@ -128,6 +131,11 @@ const contextMenuOptions = computed(() => [
   {
     label: "导出文件",
     key: "export",
+    disabled: copyMenuDisabled.value,
+  },
+  {
+    label: "提取依赖",
+    key: "extract",
     disabled: copyMenuDisabled.value,
   },
   {
@@ -664,6 +672,10 @@ async function onContextMenuSelect(key: string | number): Promise<void> {
     await onExportSelected(contextMenu.value.items);
     return;
   }
+  if (key === "extract") {
+    await onExtractSelected(contextMenu.value.items);
+    return;
+  }
   if (key === "copy-paths") {
     await onCopy("paths", contextMenu.value.items);
     return;
@@ -754,6 +766,33 @@ async function onExportSelected(items: TreeItem[]): Promise<void> {
     }
   } finally {
     exporting.value = false;
+  }
+}
+
+async function onExtractSelected(items: TreeItem[]): Promise<void> {
+  if (extracting.value) return;
+  const archivePath = archive.info?.path ?? "";
+  const session = fileSets.sessionId;
+  hideContextMenu();
+  extracting.value = true;
+  try {
+    const seeds = await collectFilePaths(items);
+    if (session !== fileSets.sessionId || archive.info?.path !== archivePath) return;
+    if (seeds.length === 0) {
+      message.info("选中的目录里没有可作种子的文件");
+      return;
+    }
+    const label = seeds.length === 1
+      ? `提取 ${seeds[0].split("/").pop()} 的依赖`
+      : `提取 ${seeds.length} 个文件的依赖`;
+    const dir = await extraction.open(seeds, label);
+    if (dir) message.success(`已提取到 ${dir}`);
+  } catch (error: any) {
+    if (session === fileSets.sessionId && archive.info?.path === archivePath) {
+      if (!isCancel(error)) message.error(`提取失败: ${error?.message ?? error}`);
+    }
+  } finally {
+    extracting.value = false;
   }
 }
 

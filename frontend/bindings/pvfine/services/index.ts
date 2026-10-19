@@ -11,6 +11,7 @@ import * as CacheService from "./cacheservice.js";
 import * as DropService from "./dropservice.js";
 import * as EditorService from "./editorservice.js";
 import * as ExportService from "./exportservice.js";
+import * as ExtractionService from "./extractionservice.js";
 import * as FileGUIService from "./fileguiservice.js";
 import * as FileSetService from "./filesetservice.js";
 import * as ImageService from "./imageservice.js";
@@ -33,6 +34,7 @@ export {
     DropService,
     EditorService,
     ExportService,
+    ExtractionService,
     FileGUIService,
     FileSetService,
     ImageService,
@@ -89,6 +91,12 @@ export type {
     ExportPreview,
     ExportPreviewFile,
     ExportRequest,
+    ExtractionCategory,
+    ExtractionCategoryPreview,
+    ExtractionPreset,
+    ExtractionPreview,
+    ExtractionRequest,
+    ExtractionResult,
     FileMeta,
     FileRegistration,
     FileRegistrationOptions,

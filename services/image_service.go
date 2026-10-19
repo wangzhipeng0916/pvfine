@@ -179,6 +179,27 @@ func (s *ImageService) Initialize() ImageIndexStatus {
 	return s.IndexStatus()
 }
 
+// locateNPK answers "which container file holds this image path?" from the live
+// in-memory index. It is unexported on purpose: extraction needs the answer, but
+// it is not something the interface should offer on its own, and exposing it
+// would widen the app's public surface for no user-visible gain.
+func (s *ImageService) locateNPK(imagePath string) (string, bool) {
+	normalized := normalizeImagePath(imagePath)
+	if normalized == "" {
+		return "", false
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.snapshot == nil {
+		return "", false
+	}
+	record := s.snapshot.byPath[normalized]
+	if record == nil {
+		return "", false
+	}
+	return record.npkRelative, true
+}
+
 // SelectNPKDirectory opens the native directory chooser, persists the
 // selected path and starts a new asynchronous index generation.
 func (s *ImageService) SelectNPKDirectory() (ImageIndexStatus, error) {

@@ -3,6 +3,9 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as extraction$0 from "../internal/extraction/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as pvf$0 from "../internal/pvf/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -444,6 +447,13 @@ export interface ExportPreview {
     "id": string;
     "fileCount": number;
     "dependencyCount": number;
+
+    /**
+     * ReferenceDependencies counts entries added because the package's own files
+     * reference them (scripts, animations, particles) — the class of dependency the
+     * table pass cannot see.
+     */
+    "referenceDependencies": number;
     "skippedDeletes": number;
     "warnings": string[] | null;
     "files": ExportPreviewFile[] | null;
@@ -466,6 +476,163 @@ export interface ExportRequest {
     "name": string;
     "version": string;
     "includeDependencies": boolean;
+}
+
+/**
+ * ExtractionCategory is one declared export category.
+ */
+export interface ExtractionCategory {
+    "id": string;
+    "name": string;
+    "order": number;
+}
+
+/**
+ * ExtractionCategoryPreview is one row of the preview table.
+ */
+export interface ExtractionCategoryPreview {
+    "id": string;
+    "name": string;
+    "files": number;
+    "bytes": number;
+    "refs": number;
+    "autoFiles": number;
+    "samples"?: string[] | null;
+}
+
+/**
+ * ExtractionPreset is one named starting point. It pre-selects categories and
+ * says how to write a seed; it does not change how the closure is walked.
+ */
+export interface ExtractionPreset {
+    "id": string;
+    "name": string;
+    "description": string;
+    "seedHint": string;
+    "categories"?: string[] | null;
+}
+
+/**
+ * ExtractionPreview answers "what would this export contain" without touching
+ * the disk. The counts are the contract: main + ancestors + auto-completed is
+ * what lands, and strict mode reports its dangling references instead.
+ */
+export interface ExtractionPreview {
+    "id": string;
+    "categories": ExtractionCategoryPreview[] | null;
+    "closureCount": number;
+    "mainCount": number;
+    "ancestorCount": number;
+    "externalCount": number;
+    "danglingCount": number;
+    "exportedCount": number;
+    "states": { [_ in string]?: number } | null;
+    "vocabCoverage": number;
+
+    /**
+     * AssetTotal counts distinct client images the exported set references,
+     * AssetMatched how many of them can be attributed to an NPK container, and
+     * AssetDynamic how many are templates that only the running client can
+     * resolve. They are preview fields on purpose: artwork is half of what makes
+     * an equipment package usable, so the user sees it before choosing a folder.
+     */
+    "assetTotal": number;
+    "assetNpkMatched": number;
+    "assetDynamic": number;
+
+    /**
+     * AssetContainers and AssetBytes say what "把图片容器也拷进包" would cost, so
+     * the choice is made on the preview instead of after a 100 MiB surprise.
+     */
+    "assetContainers"?: string[] | null;
+    "assetNpkBytes": number;
+
+    /**
+     * Preset echoes the preset the category defaults came from, so the interface
+     * can show "按装备预设" instead of leaving the user guessing why boxes moved.
+     */
+    "preset"?: string;
+    "strict": boolean;
+    "layout": string;
+    "warnings"?: string[] | null;
+}
+
+/**
+ * ExtractionRequest is one preview request: which entries, and how to organise
+ * them. Everything the UI shows comes from the returned preview, so the
+ * frontend never re-derives classification or completion itself.
+ */
+export interface ExtractionRequest {
+    "seeds": string[] | null;
+
+    /**
+     * Preset applies the shipped preset's default categories when the caller left
+     * categories empty. It never narrows the closure.
+     */
+    "preset"?: string;
+    "categories"?: string[] | null;
+    "strict"?: boolean;
+    "layout"?: string;
+    "form"?: string;
+    "maxEntries"?: number;
+
+    /**
+     * LstSuggest asks for registry registration proposals. Off by default: a
+     * registration changes what the game loads, so it must be requested.
+     */
+    "lstSuggest"?: boolean;
+
+    /**
+     * CopyAssets additionally copies the NPK containers the exported set needs
+     * into the package's npk/ folder, so one run yields scripts + artwork +
+     * registration rows. Off by default because the volume is the expensive
+     * part: one dungeon touches 15 containers / 100.7 MiB on the measured
+     * archive, and the preview reports that size before anything is written.
+     */
+    "copyAssets"?: boolean;
+}
+
+/**
+ * ExtractionResult reports what landed on disk.
+ */
+export interface ExtractionResult {
+    "dir": string;
+    "files": number;
+    "bytes": number;
+    "autoCompleted": number;
+    "dangling": number;
+
+    /**
+     * LstSuggestions lists registry additions that were requested and found.
+     */
+    "lstSuggestions"?: extraction$0.LstSuggestion[] | null;
+
+    /**
+     * RegistryFragments are the _registries/ files holding the .lst rows this
+     * extraction involved.
+     */
+    "registryFragments"?: string[] | null;
+
+    /**
+     * AssetTotal and AssetMatched repeat the preview's resource counts as of what
+     * actually landed, and AssetSheet names the cross-reference file in report/.
+     */
+    "assetTotal": number;
+    "assetNpkMatched": number;
+    "assetDynamic": number;
+    "assetSheet"?: string;
+
+    /**
+     * AssetContainers names the distinct NPK files the matched images live in,
+     * so "which containers to copy" is answerable without opening the sheet.
+     */
+    "assetContainers"?: string[] | null;
+
+    /**
+     * AssetCopied and AssetCopiedBytes report the opt-in container copy.
+     */
+    "assetCopied": number;
+    "assetCopiedBytes": number;
 }
 
 /**

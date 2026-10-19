@@ -2,22 +2,23 @@
 import { computed, defineAsyncComponent, h, ref, watch } from "vue";
 import { useMessage } from "naive-ui";
 import {
-  FolderOpen24Regular,
-  ArrowDownload24Regular,
-  Save24Regular,
   ArchiveMultiple24Regular,
-  FolderArrowUp24Regular,
-  Stop24Regular,
-  Search24Regular,
+  ArrowDownload24Regular,
   Code24Regular,
-  DocumentText24Regular,
-  DocumentSync24Regular,
   Dismiss24Regular,
+  DocumentSync24Regular,
+  DocumentText24Regular,
   Drop24Regular,
+  FolderArrowUp24Regular,
+  FolderOpen24Regular,
   Globe24Regular,
   Key24Regular,
+  Open24Regular,
+  Save24Regular,
+  Search24Regular,
   Settings24Regular,
-  Toolbox24Regular,
+  Stop24Regular,
+  Toolbox24Regular
 } from "@vicons/fluent";
 import {
   NBadge,
@@ -39,6 +40,7 @@ import { useArchiveDiffStore } from "../stores/archiveDiff";
 import { useVersionStore } from "../stores/version";
 import { useScriptStore } from "../stores/script";
 import { useDropRateStore } from "../stores/dropRate";
+import { useExtractionStore } from "../stores/extraction";
 import IndexHashRegistrationModal from "./IndexHashRegistrationModal.vue";
 import { effectiveBinding, formatBinding, type ShortcutCommandId } from "../shortcuts";
 
@@ -53,6 +55,7 @@ const version = useVersionStore();
 const archiveDiff = useArchiveDiffStore();
 const script = useScriptStore();
 const dropRate = useDropRateStore();
+const extraction = useExtractionStore();
 const message = useMessage();
 const dialog = useDialog();
 const hashRegistrationVisible = ref(false);
@@ -137,6 +140,12 @@ const toolOptions = computed(() => [
       { label: "增幅概率", key: "amplify-upgrade", disabled: !archive.open },
       { label: "锻造配置", key: "forge", disabled: !archive.open },
     ],
+  },
+  {
+    label: "提取中心",
+    key: "extraction",
+    disabled: !archive.open || archive.loading,
+    icon: () => h(NIcon, null, { default: () => h(Open24Regular) }),
   },
   {
     label: "归档对比",
@@ -273,6 +282,14 @@ function onCancelUnpack() {
 
 async function onToolSelect(key: string): Promise<void> {
   if (key === "archive-diff") { archiveDiff.open(); return; }
+  if (key === "extraction") {
+    if (!archive.open) { message.warning("需先打开 PVF 归档"); return; }
+    const active = editor.activeTab?.path ?? "";
+    if (!active) { message.warning("请先在编辑器打开一个文件，或从文件树右键「提取依赖」"); return; }
+    const written = await extraction.open([active], "提取 " + active.split("/").pop() + " 的依赖");
+    if (written) message.success(`已提取到 ${written}`);
+    return;
+  }
   if (key === "forge") {
     if (!archive.open) { message.warning("需先打开 PVF 归档"); return; }
     try { await editor.openForge(); }
