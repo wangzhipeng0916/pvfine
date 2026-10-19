@@ -27,6 +27,37 @@ export function FileDiff(id: string, path: string): $CancellablePromise<$models.
     return $Call.ByID(1854378037, id, path);
 }
 
+/**
+ * FilteredChildren 按照目录路径与操作类型（all/add/modify/delete）返回子节点列表
+ */
+export function FilteredChildren(id: string, path: string, operation: string): $CancellablePromise<$models.ArchiveDiffNode[] | null> {
+    return $Call.ByID(1031553676, id, path, operation);
+}
+
+/**
+ * FlatFiles 按照搜索词与操作类型返回所有差异文件的平铺列表，供双栏工作台过滤检索
+ */
+export function FlatFiles(id: string, query: string, operation: string): $CancellablePromise<$models.ArchiveDiffNode[] | null> {
+    return $Call.ByID(2926329878, id, query, operation);
+}
+
+/**
+ * MergeFiles 将选中的差异文件从对比归档合并到本地当前打开的归档中。
+ * 遵循核心锁在前、diff 锁在后的顺序防止死锁。
+ * @author flobit
+ */
+export function MergeFiles(id: string, paths: string[] | null): $CancellablePromise<$models.ArchiveDiffMergeResult | null> {
+    return $Call.ByID(2350138011, id, paths);
+}
+
+/**
+ * MergeText 将单文件编辑或段落合入后的最终文本写回到当前工作区归档。
+ * @author flobit
+ */
+export function MergeText(id: string, path: string, text: string): $CancellablePromise<void> {
+    return $Call.ByID(3084798427, id, path, text);
+}
+
 export function Release(): $CancellablePromise<void> {
     return $Call.ByID(3139863069);
 }

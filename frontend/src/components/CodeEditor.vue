@@ -40,7 +40,10 @@ import {
   historyKeymap,
   indentLess,
   insertTab,
+  redo,
+  undo,
 } from "@codemirror/commands";
+import { registerUndoHandler } from "../activeUndoBridge";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { autocompletion, type CompletionContext, type CompletionResult } from "@codemirror/autocomplete";
 import { javascript } from "@codemirror/lang-javascript";
@@ -748,9 +751,22 @@ onMounted(() => {
       finishPaint();
     });
   });
+
+  unregisterUndo = registerUndoHandler({
+    undo: () => (view ? undo(view) : false),
+    redo: () => (view ? redo(view) : false),
+    priority: 10,
+    isActive: () => !!view && (view.hasFocus || (!!host.value && host.value.contains(document.activeElement))),
+  });
 });
 
+let unregisterUndo: (() => void) | null = null;
+
 onBeforeUnmount(() => {
+  if (unregisterUndo) {
+    unregisterUndo();
+    unregisterUndo = null;
+  }
   if (paintFrame !== undefined) cancelAnimationFrame(paintFrame);
   hideAnnotationTooltip();
   view?.destroy();

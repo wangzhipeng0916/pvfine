@@ -151,6 +151,16 @@ export interface ArchiveDiffFile {
     "message": string;
 }
 
+/**
+ * ArchiveDiffMergeResult 记录批量合并操作的结果汇总
+ */
+export interface ArchiveDiffMergeResult {
+    "successCount": number;
+    "failedCount": number;
+    "mergedPaths": string[] | null;
+    "errors"?: string[] | null;
+}
+
 export interface ArchiveDiffNode {
     "path": string;
     "name": string;
@@ -849,6 +859,14 @@ export interface ListRegistrationTarget {
     "entryPath": string;
     "suggestedId": string;
     "hasIndexHash": boolean;
+}
+
+export interface MCPStatus {
+    "enabled": boolean;
+    "port": number;
+    "endpoint": string;
+    "error"?: string;
+    "busy": boolean;
 }
 
 /**

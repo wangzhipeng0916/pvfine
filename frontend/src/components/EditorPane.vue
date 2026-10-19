@@ -23,6 +23,7 @@ import {
   BookmarkAdd24Regular,
   Dismiss16Regular,
   DocumentAdd24Regular,
+  DocumentSync24Regular,
   Eye24Regular,
   EyeOff24Regular,
   PanelRight24Regular,
@@ -34,10 +35,12 @@ import {
 } from "@vicons/fluent";
 import {
   useEditorStore,
+  COMPARE_TAB_INDEX,
   type DraggedEditorTab,
   type EditorPaneId,
   type EditorTab,
 } from "../stores/editor";
+import CompareWorkbench from "./CompareWorkbench.vue";
 import { useArchiveStore } from "../stores/archive";
 import { useExplorerStore } from "../stores/explorer";
 import { useBookmarkStore } from "../stores/bookmarks";
@@ -723,8 +726,18 @@ function onDrop(event: DragEvent): void {
             @contextmenu.stop="onTabContextMenu($event, tab.index)"
           >
             <NSpin v-if="tab.loading" :size="12" />
+            <NIcon
+              v-else-if="tab.index === COMPARE_TAB_INDEX"
+              :size="15"
+              style="color: var(--pvf-primary); margin-right: 2px;"
+            >
+              <DocumentSync24Regular />
+            </NIcon>
             <ImageThumbnail v-else-if="tab.icon" :reference="tab.icon" :size="16" />
-            <span :class="['tab-dot', { dirty: tab.text !== tab.original }]" />
+            <span
+              v-if="tab.index !== COMPARE_TAB_INDEX"
+              :class="['tab-dot', { dirty: tab.text !== tab.original }]"
+            />
             <span class="tab-title">{{ tab.title }}</span>
             <NTooltip>
               <template #trigger>
@@ -742,7 +755,16 @@ function onDrop(event: DragEvent): void {
           </span>
         </template>
 
-        <div class="editor-info-bar" role="toolbar" aria-label="当前文件操作">
+        <!-- 特殊 Tab：归档差异对比工作台 -->
+        <CompareWorkbench
+          v-if="tab.index === COMPARE_TAB_INDEX"
+          :theme-id="props.themeId"
+          :active="editor.activePaneId === paneId && activeTab?.index === tab.index"
+        />
+
+        <!-- 普通文件编辑模式 -->
+        <template v-else>
+          <div class="editor-info-bar" role="toolbar" aria-label="当前文件操作">
           <div class="editor-file-tags" aria-label="当前文件关联信息">
             <NTag
               v-for="tag in fileTags"
@@ -986,6 +1008,7 @@ function onDrop(event: DragEvent): void {
             @close="guiModes.requestMode(tab.index, 'text')"
           />
         </div>
+        </template>
       </NTabPane>
     </NTabs>
     <NDropdown

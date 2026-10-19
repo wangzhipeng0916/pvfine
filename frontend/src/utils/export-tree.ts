@@ -34,7 +34,9 @@ export function buildExportTree(files: ExportPreviewFile[]): TreeOption[] {
   function sort(nodes: TreeOption[]): void {
     nodes.sort((a, b) => {
       if (a.isLeaf !== b.isLeaf) return a.isLeaf ? 1 : -1;
-      return String(a.label).localeCompare(String(b.label));
+      const sa = String(a.label);
+      const sb = String(b.label);
+      return sa < sb ? -1 : (sa > sb ? 1 : 0);
     });
     for (const node of nodes) if (node.children) sort(node.children);
   }

@@ -67,13 +67,15 @@ type ArchiveDiffFile struct {
 }
 
 type archiveDiffSession struct {
-	status         ArchiveDiffStatus
-	cancel         context.CancelFunc
-	current, other *pvf.Archive
-	changes        map[string]pvfversion.FileChange
-	children       map[string][]ArchiveDiffNode
-	detail         *ArchiveDiffFile
-	detailLimit    int32
+	status           ArchiveDiffStatus
+	cancel           context.CancelFunc
+	current, other   *pvf.Archive
+	changes          map[string]pvfversion.FileChange
+	children         map[string][]ArchiveDiffNode
+	filteredChildren map[string]map[string][]ArchiveDiffNode
+	detail           *ArchiveDiffFile
+	detailLimit      int32
+	drafts           map[string]ArchiveDiffDraft
 }
 
 var archiveDiffSequence atomic.Uint64
@@ -133,9 +135,17 @@ func (s *ArchiveDiffService) Start(request ArchiveDiffRequest) (*ArchiveDiffStat
 	}
 	stage := a.CloneForBatch()
 	ctx, cancel := context.WithCancel(context.Background())
-	p := &archiveDiffSession{cancel: cancel, status: ArchiveDiffStatus{
-		ID: fmt.Sprint(archiveDiffSequence.Add(1)), State: "loading", CurrentPath: a.SourcePath(), OtherPath: request.Path,
-	}}
+	draftsMap := make(map[string]ArchiveDiffDraft, len(request.Drafts))
+	for _, draft := range request.Drafts {
+		draftsMap[pvfversion.CanonicalPath(draft.Path)] = draft
+	}
+	p := &archiveDiffSession{
+		cancel: cancel,
+		status: ArchiveDiffStatus{
+			ID: fmt.Sprint(archiveDiffSequence.Add(1)), State: "loading", CurrentPath: a.SourcePath(), OtherPath: request.Path,
+		},
+		drafts: draftsMap,
+	}
 	s.mu.Lock()
 	if s.session != nil {
 		s.session.cancel()
@@ -239,7 +249,7 @@ func (s *ArchiveDiffService) compare(ctx context.Context, p *archiveDiffSession,
 		return
 	}
 	phase("building", 0, len(changes))
-	children, err := archiveDiffBuildChildren(ctx, changes, phase)
+	children, filteredChildren, err := buildAllDiffTrees(ctx, changes, phase)
 	if err != nil {
 		fail(err)
 		return
@@ -266,7 +276,7 @@ func (s *ArchiveDiffService) compare(ctx context.Context, p *archiveDiffSession,
 		return
 	}
 	p.current, p.other = stage, other
-	p.children, p.changes = children, changeIndex
+	p.children, p.filteredChildren, p.changes = children, filteredChildren, changeIndex
 	p.status.Added, p.status.Deleted, p.status.Modified = added, deleted, modified
 	p.status.Processed, p.status.Total = total, total
 	p.status.State = "ready"
@@ -385,14 +395,62 @@ func archiveDiffBuildChildren(ctx context.Context, changes []pvfversion.FileChan
 	return result, ctx.Err()
 }
 
-func (s *ArchiveDiffService) Children(id, path string) ([]ArchiveDiffNode, error) {
+// buildAllDiffTrees 根据变更列表构建全量树以及针对 add/modify/delete 的三棵过滤树
+func buildAllDiffTrees(ctx context.Context, changes []pvfversion.FileChange, phase func(string, int, int)) (map[string][]ArchiveDiffNode, map[string]map[string][]ArchiveDiffNode, error) {
+	allTree, err := archiveDiffBuildChildren(ctx, changes, phase)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var addChanges, modChanges, delChanges []pvfversion.FileChange
+	for _, change := range changes {
+		switch change.Operation {
+		case pvfversion.OperationAdd:
+			addChanges = append(addChanges, change)
+		case pvfversion.OperationDelete:
+			delChanges = append(delChanges, change)
+		default:
+			modChanges = append(modChanges, change)
+		}
+	}
+
+	filtered := make(map[string]map[string][]ArchiveDiffNode, 3)
+	if tree, err := archiveDiffBuildChildren(ctx, addChanges, nil); err == nil {
+		filtered["add"] = tree
+	}
+	if tree, err := archiveDiffBuildChildren(ctx, modChanges, nil); err == nil {
+		filtered["modify"] = tree
+	}
+	if tree, err := archiveDiffBuildChildren(ctx, delChanges, nil); err == nil {
+		filtered["delete"] = tree
+	}
+
+	return allTree, filtered, nil
+}
+
+// FilteredChildren 按照目录路径与操作类型（all/add/modify/delete）返回子节点列表
+func (s *ArchiveDiffService) FilteredChildren(id, path, operation string) ([]ArchiveDiffNode, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	p, err := s.findLocked(id, true)
 	if err != nil {
 		return nil, err
 	}
-	return append([]ArchiveDiffNode{}, p.children[pvfversion.CanonicalPath(path)]...), nil
+	canonicalPath := pvfversion.CanonicalPath(path)
+	op := strings.ToLower(strings.TrimSpace(operation))
+	if op == "" || op == "all" {
+		return append([]ArchiveDiffNode{}, p.children[canonicalPath]...), nil
+	}
+	if p.filteredChildren != nil {
+		if tree, ok := p.filteredChildren[op]; ok {
+			return append([]ArchiveDiffNode{}, tree[canonicalPath]...), nil
+		}
+	}
+	return []ArchiveDiffNode{}, nil
+}
+
+func (s *ArchiveDiffService) Children(id, path string) ([]ArchiveDiffNode, error) {
+	return s.FilteredChildren(id, path, "all")
 }
 
 func (s *ArchiveDiffService) FileDiff(id, path string) (*ArchiveDiffFile, error) {
@@ -405,7 +463,8 @@ func (s *ArchiveDiffService) FileDiff(id, path string) (*ArchiveDiffFile, error)
 		s.mu.Unlock()
 		return nil, err
 	}
-	change, ok := p.changes[pvfversion.CanonicalPath(path)]
+	canonicalPath := pvfversion.CanonicalPath(path)
+	change, ok := p.changes[canonicalPath]
 	before, after := p.other, p.current
 	if ok && p.detail != nil && p.detail.Path == change.DisplayPath && p.detailLimit == limit {
 		result := *p.detail
@@ -414,7 +473,35 @@ func (s *ArchiveDiffService) FileDiff(id, path string) (*ArchiveDiffFile, error)
 	}
 	s.mu.Unlock()
 	if !ok {
-		return nil, fmt.Errorf("文件不在差异列表中")
+		// 若文件已从差异列表中移除（例如刚刚合入完成），但在归档中仍存在，则平滑返回无差异视图
+		if before == nil || after == nil {
+			return nil, fmt.Errorf("文件不在差异列表中")
+		}
+		bi, bok := before.Find(canonicalPath)
+		ai, aok := after.Find(canonicalPath)
+		if !bok && !aok {
+			return nil, fmt.Errorf("文件不在差异列表中")
+		}
+		var bType, aType int32
+		if bok {
+			bType, _, _ = before.FileContentInfo(bi)
+		}
+		if aok {
+			aType, _, _ = after.FileContentInfo(ai)
+		}
+		display := path
+		if bok {
+			display = before.Path(bi)
+		} else if aok {
+			display = after.Path(ai)
+		}
+		change = pvfversion.FileChange{
+			Path:        canonicalPath,
+			DisplayPath: pvfversion.DisplayPath(display),
+			Operation:   "none",
+			BeforeType:  bType,
+			AfterType:   aType,
+		}
 	}
 	result := &ArchiveDiffFile{Path: change.DisplayPath, Operation: string(change.Operation), BeforeHash: change.BeforeHash, AfterHash: change.AfterHash, BeforeType: change.BeforeType, AfterType: change.AfterType}
 	bi, bok := before.Find(change.Path)

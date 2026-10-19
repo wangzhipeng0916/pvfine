@@ -1,3 +1,4 @@
+import { assertMCPIdle } from "../mcpActivity";
 import { defineStore } from "pinia";
 import { computed, markRaw, nextTick, reactive, ref } from "vue";
 import { Events } from "@wailsio/runtime";
@@ -11,9 +12,13 @@ import { useExplorerStore } from "./explorer";
 import { useScriptStore } from "./script";
 import { startDebugTiming } from "./debugTiming";
 import { hasLongLine } from "../editorWrapping";
+import { useArchiveDiffStore } from "./archiveDiff";
 
 export type EditorPaneId = string;
 export type SplitOrientation = "columns" | "rows";
+
+/** 归档差异对比专属特殊 Tab 索引常量 */
+export const COMPARE_TAB_INDEX = -999;
 
 export interface ArchiveSaveProgress {
   phase: string;
@@ -179,6 +184,7 @@ export const useEditorStore = defineStore("editor", () => {
   }
 
   function isDirty(tab: EditorTab): boolean {
+    if (tab.index === COMPARE_TAB_INDEX) return useArchiveDiffStore().isDraftDirty;
     if (!tab.editable) return false;
     return isTextDirty(tab) || hasGUIDirty(tab.index);
   }
@@ -406,6 +412,7 @@ export const useEditorStore = defineStore("editor", () => {
       const globalTabIndex = tabs.value.findIndex((tab) => tab.index === index);
       if (globalTabIndex >= 0) tabs.value.splice(globalTabIndex, 1);
       clearExplorerSelection(tab?.path);
+      if (index === COMPARE_TAB_INDEX) useArchiveDiffStore().close();
     }
 
     if (pane.tabIndexes.length === 0 && isSplit.value) {
@@ -445,6 +452,7 @@ export const useEditorStore = defineStore("editor", () => {
     }
 
     tabs.value = tabs.value.filter((tab) => !removedIndexes.has(tab.index));
+    if (removedIndexes.has(COMPARE_TAB_INDEX)) useArchiveDiffStore().close();
     clearExplorerSelection(removedPaths);
 
     while (isSplit.value) {
@@ -689,7 +697,7 @@ export const useEditorStore = defineStore("editor", () => {
     if (!source || source.text !== request.text) throw new Error("商店草稿已变化，请关闭表单并重新打开");
     const gui = useFileGUIStore();
     const epoch = gui.epoch;
-    request = { ...request, drafts: allFiles.value.filter(isDirty).map((tab) => ({ fileIndex: tab.index, path: tab.path, text: tab.text })) };
+    request = { ...request, drafts: allFiles.value.filter(isTextDirty).map((tab) => ({ fileIndex: tab.index, path: tab.path, text: tab.text })) };
     saving.value = true;
     guiApplying.value = true;
     guiRefreshWarning.value = "";
@@ -802,6 +810,40 @@ export const useEditorStore = defineStore("editor", () => {
     return true;
   }
 
+  /** 打开或激活归档对比特殊 Tab */
+  function openCompareTab(requestedPaneId?: EditorPaneId): void {
+    const targetPaneId = resolvePaneId(requestedPaneId);
+    let tab = tabs.value.find((t) => t.index === COMPARE_TAB_INDEX);
+    if (!tab) {
+      tab = {
+        index: COMPARE_TAB_INDEX,
+        path: "__compare__",
+        title: "归档对比",
+        dataType: 0,
+        size: 0,
+        tags: [],
+        editable: false,
+        original: "",
+        text: "",
+        modified: false,
+        annotations: [],
+        annotationsHidden: false,
+        lineWrapping: false,
+        icon: null,
+        fieldImage: null,
+        loading: false,
+        loadError: null,
+      };
+      tabs.value.push(tab);
+    }
+    addTabToPane(targetPaneId, COMPARE_TAB_INDEX);
+    const pane = paneStates[targetPaneId];
+    if (pane) {
+      pane.activeKey = COMPARE_TAB_INDEX;
+    }
+    activePaneId.value = targetPaneId;
+  }
+
   /** 把单个标签的本地文本写入后端 overlay,成功后重置脏基线。 */
   async function saveTab(index: number): Promise<boolean> {
     const tab = getFileDraft(index);
@@ -822,7 +864,9 @@ export const useEditorStore = defineStore("editor", () => {
 
   /** 保存指定文件，供文件 GUI 与通用 GUI 共用。 */
   async function saveFileTab(index: number): Promise<boolean> {
+    assertMCPIdle();
     if (saving.value) return false;
+    if (index === COMPARE_TAB_INDEX) return saveCompareDraft();
     const tab = getFileDraft(index);
     if (!tab || !tab.editable) return false;
     if (tab && tab.editable && hasGUIDirty(tab.index)) {
@@ -859,8 +903,19 @@ export const useEditorStore = defineStore("editor", () => {
     for (const index of indexes) {
       if (await saveTab(index)) saved += 1;
     }
+    if (await saveCompareDraft()) saved += 1;
     if (saved > 0) await useArchiveStore().refreshInfo();
     return saved;
+  }
+
+  async function saveCompareDraft(): Promise<boolean> {
+    if (!tabs.value.some(tab => tab.index === COMPARE_TAB_INDEX)) return false;
+    const diff = useArchiveDiffStore();
+    if (!diff.isDraftDirty) return false;
+    if (diff.merging || !await diff.mergeText(diff.draftPath, diff.draftText)) {
+      throw new Error("对比草稿尚未保存，请稍后重试");
+    }
+    return true;
   }
 
   /**
@@ -886,6 +941,7 @@ export const useEditorStore = defineStore("editor", () => {
 
   /** 保存到源文件 */
   async function save() {
+    assertMCPIdle();
     if (saving.value) throw new Error("正在保存，请稍后再试");
     const archive = useArchiveStore();
     const guiDirtyTab = allFiles.value.find((tab) => tab.editable && hasGUIDirty(tab.index));
@@ -917,6 +973,7 @@ export const useEditorStore = defineStore("editor", () => {
 
   /** 另存为新 PVF,返回保存路径(取消返回 null) */
   async function saveAs() {
+    assertMCPIdle();
     if (saving.value) throw new Error("正在保存，请稍后再试");
     const archive = useArchiveStore();
     const guiDirtyTab = allFiles.value.find((tab) => tab.editable && hasGUIDirty(tab.index));
@@ -933,10 +990,6 @@ export const useEditorStore = defineStore("editor", () => {
       const path = await EditorService.SaveAsDialog();
       if (path) {
         archiveSaveStage.value = "finishing";
-        for (const tab of allFiles.value) {
-          tab.original = tab.text;
-          tab.modified = false;
-        }
         await archive.refreshInfo();
       }
       return path || null;
@@ -1005,7 +1058,7 @@ export const useEditorStore = defineStore("editor", () => {
 
   async function refreshAnnotations() {
     await Promise.all(
-      allFiles.value.filter((tab) => !tab.loading && !tab.loadError).map(async (tab) => {
+      allFiles.value.filter((tab) => !tab.loading && !tab.loadError && tab.index >= 0 && tab.index !== COMPARE_TAB_INDEX).map(async (tab) => {
         const text = tab.text;
         const annotations = (await EditorService.GetAnnotationsForText(tab.index, text)) ?? [];
         const current = allFiles.value.find((item) => item.index === tab.index);
@@ -1018,7 +1071,7 @@ export const useEditorStore = defineStore("editor", () => {
   /** 重新读取当前 renderer 生成的文本,但保留已修改标签的脏基线。 */
   async function refreshRenderedText() {
     await Promise.all(
-      allFiles.value.filter((tab) => !tab.loading && !tab.loadError).map(async (tab) => {
+      allFiles.value.filter((tab) => !tab.loading && !tab.loadError && tab.index >= 0 && tab.index !== COMPARE_TAB_INDEX).map(async (tab) => {
         const meta = await EditorService.GetFile(tab.index);
         const current = allFiles.value.find((item) => item.index === tab.index);
         if (!current || !meta) return;
@@ -1077,19 +1130,23 @@ export const useEditorStore = defineStore("editor", () => {
     const visibleTabs = new Set(tabs.value);
     const currentTabs = [...allFiles.value];
     const nodes = (await ArchiveService.ResolveFiles(currentTabs.map((tab) => tab.path))) ?? [];
+    const normalize = (p: string) => p.replaceAll("\\", "/").replace(/^\/+|\/+$/g, "").toLowerCase();
     const indexByPath = new Map(
       nodes
         .filter((node): node is NonNullable<typeof node> => !!node && !node.isDir)
-        .map((node) => [node.path, node])
+        .map((node) => [normalize(node.path), node])
     );
     const nextIndexByOld = new Map<number, number>();
     const remainingTabs: EditorTab[] = [];
-    const pathsToRefresh = new Set(
-      refreshPaths.map((path) => path.replaceAll("\\", "/").replace(/^\/+|\/+$/g, ""))
-    );
+    const pathsToRefresh = new Set(refreshPaths.map(normalize));
 
     for (const tab of currentTabs) {
-      const node = indexByPath.get(tab.path);
+      if (tab.index === COMPARE_TAB_INDEX || tab.index < 0) {
+        nextIndexByOld.set(tab.index, tab.index);
+        remainingTabs.push(tab);
+        continue;
+      }
+      const node = indexByPath.get(normalize(tab.path));
       if (!node) continue;
       nextIndexByOld.set(tab.index, node.fileIndex);
       tab.index = node.fileIndex;
@@ -1119,7 +1176,7 @@ export const useEditorStore = defineStore("editor", () => {
     guiDrafts.value = remainingTabs.filter((tab) => !visibleTabs.has(tab));
     await Promise.all(
       remainingTabs
-        .filter((tab) => pathsToRefresh.has(tab.path))
+        .filter((tab) => tab.index >= 0 && pathsToRefresh.has(normalize(tab.path)))
         .map(async (tab) => {
           const meta = await EditorService.GetFile(tab.index);
           if (!meta) return;
@@ -1134,7 +1191,7 @@ export const useEditorStore = defineStore("editor", () => {
             // 归档整体重载:索引已失效,直接采用新内容。
             tab.text = meta.text;
             tab.original = meta.text;
-            tab.modified = false;
+            tab.modified = meta.modified;
           } else {
             tab.modified = meta.modified;
             // 本地有未保存编辑时保留编辑器内容,不被后端结果覆盖。
@@ -1150,8 +1207,13 @@ export const useEditorStore = defineStore("editor", () => {
     }
   }
 
+  /** Called only while the MCP preparation barrier holds and drafts are clean. */
+  async function syncMCPWorkspace(): Promise<void> {
+    await refreshAfterArchiveChange(allFiles.value.map(tab => tab.path), true);
+  }
+
   async function refreshOpenTabTags(): Promise<void> {
-    const currentTabs = tabs.value.filter((tab) => !tab.loading && !tab.loadError);
+    const currentTabs = tabs.value.filter((tab) => !tab.loading && !tab.loadError && tab.index >= 0 && tab.index !== COMPARE_TAB_INDEX);
     await Promise.all(
       currentTabs.map(async (tab) => {
         const meta = await EditorService.GetFile(tab.index).catch(() => null);
@@ -1177,11 +1239,62 @@ export const useEditorStore = defineStore("editor", () => {
     for (const modes of Object.values(paneGUIModes)) modes.reset();
     closeAllTabs();
   });
+  /**
+   * 归档对比合并专用刷新：强制用后端最新文本与元数据覆盖对应标签，
+   * 并重置 dirty 基线 (original = text)，确保主编辑器与合入内容严格一致。
+   */
+  async function refreshMergedFiles(paths: string[]): Promise<void> {
+    if (!paths || paths.length === 0 || allFiles.value.length === 0) return;
+    const normalize = (p: string) => p.replaceAll("\\", "/").replace(/^\/+|\/+$/g, "").toLowerCase();
+    const pathSet = new Set(paths.map(normalize));
+    const targetTabs = allFiles.value.filter((tab) => pathSet.has(normalize(tab.path)));
+    if (targetTabs.length === 0) return;
+
+    const nodes = (await ArchiveService.ResolveFiles(targetTabs.map((tab) => tab.path))) ?? [];
+    const nodeByPath = new Map(
+      nodes
+        .filter((node): node is NonNullable<typeof node> => !!node && !node.isDir)
+        .map((node) => [normalize(node.path), node])
+    );
+
+    await Promise.all(
+      targetTabs.map(async (tab) => {
+        const node = nodeByPath.get(normalize(tab.path));
+        if (!node) return;
+        tab.index = node.fileIndex;
+        const meta = await EditorService.GetFile(node.fileIndex);
+        if (!meta) return;
+        tab.path = meta.path;
+        tab.title = meta.path.split("/").pop() ?? meta.path;
+        tab.dataType = meta.dataType;
+        tab.size = meta.size;
+        tab.tags = cleanTreeTags(meta.tags);
+        tab.icon = meta.icon ?? null;
+        tab.fieldImage = meta.fieldImage ?? null;
+        tab.text = meta.text;
+        tab.original = meta.text;
+        tab.modified = meta.modified;
+        tab.annotations = cleanEditorAnnotations(meta.annotations);
+      })
+    );
+  }
+
   // 脚本或批处理在别的窗口应用了变更时，本窗口的标签不会自己更新。事件是
   // 广播的，所以这里同时覆盖同窗口（发起方已自行刷新，重复刷新是幂等的）
   // 和独立脚本窗口发起的情况。
   Events.On("archive:batch-applied", (event: any) => {
     const data = event?.data ?? event;
+    const paths = Array.isArray(data?.paths)
+      ? data.paths.filter((p: unknown): p is string => typeof p === "string")
+      : [];
+    if (data?.source === "archive-diff" || data?.source === "archive-diff-merge" || paths.length > 0) {
+      if (data?.structural) {
+        void refreshAfterArchiveChange(paths, true);
+      } else {
+        void refreshMergedFiles(paths);
+      }
+      return;
+    }
     // 结构变更会让后续条目重新编号，必须按路径重新解析树与标签。
     if (data?.structural) {
       void refreshAfterArchiveChange([], false);
@@ -1263,6 +1376,7 @@ export const useEditorStore = defineStore("editor", () => {
     archiveDiffDrafts,
     openUpgrade,
     openForge,
+    openCompareTab,
     saveActiveTab,
     saveAllDirty,
     save,
@@ -1271,6 +1385,8 @@ export const useEditorStore = defineStore("editor", () => {
     refreshRenderedText,
     refreshBatchFiles,
     refreshAfterArchiveChange,
+    syncMCPWorkspace,
+    refreshMergedFiles,
   };
 });
 

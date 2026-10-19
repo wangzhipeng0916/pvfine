@@ -2,9 +2,9 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { nextTick } from "vue";
 
-const api = vi.hoisted(() => ({ GetFileBasic: vi.fn(), GetFile: vi.fn(), GetAnnotationsForText: vi.fn(), showArchiveEditor: vi.fn(), ApplyShopEdit: vi.fn(), refreshInfo: vi.fn() }));
+const api = vi.hoisted(() => ({ GetFileBasic: vi.fn(), GetFile: vi.fn(), GetAnnotationsForText: vi.fn(), showArchiveEditor: vi.fn(), ApplyShopEdit: vi.fn(), refreshInfo: vi.fn(), Release: vi.fn(), ResolveFiles: vi.fn() }));
 vi.mock("@wailsio/runtime", () => ({ Events: { On: vi.fn() } }));
-vi.mock("../bindings/pvfine/services", () => ({ EditorService: api, ArchiveService: {}, FileGUIService: api }));
+vi.mock("../bindings/pvfine/services", () => ({ EditorService: api, ArchiveService: api, FileGUIService: api, ArchiveDiffService: api }));
 vi.mock("../src/stores/archive", () => ({ useArchiveStore: () => ({ refreshInfo: api.refreshInfo }) }));
 vi.mock("../src/stores/script", () => ({ useScriptStore: () => api }));
 vi.mock("../src/stores/explorer", () => ({
@@ -12,6 +12,7 @@ vi.mock("../src/stores/explorer", () => ({
 }));
 import { useEditorStore } from "../src/stores/editor";
 import { longLineThreshold } from "../src/editorWrapping";
+import { useArchiveDiffStore } from "../src/stores/archiveDiff";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -26,6 +27,77 @@ beforeEach(() => {
   vi.resetAllMocks();
   api.GetFile.mockResolvedValue(null);
   api.GetAnnotationsForText.mockResolvedValue([]);
+  api.Release.mockResolvedValue(undefined);
+  api.ResolveFiles.mockResolvedValue([]);
+});
+
+test("对比草稿参与所有关闭路径的脏检查，取消保留，确认释放会话", () => {
+  const editor = useEditorStore();
+  const diff = useArchiveDiffStore();
+  editor.openCompareTab();
+  diff.setDraft("a.equ", "edited", "original");
+  expect(editor.dirtyCount).toBe(1);
+  editor.requestCloseTab(-999);
+  expect(editor.pendingClose).toMatchObject({ kind: "tab", index: -999 });
+  editor.cancelPendingClose();
+  expect(diff.isDraftDirty).toBe(true);
+  editor.requestCloseOthers(1);
+  expect(editor.pendingClose).toEqual({ kind: "others", keepIndex: 1 });
+  editor.cancelPendingClose();
+  editor.requestCloseAll();
+  expect(editor.pendingClose).toEqual({ kind: "all" });
+  editor.confirmPendingClose();
+  expect(editor.tabs).toHaveLength(0);
+  expect(diff.isDraftDirty).toBe(false);
+  expect(api.Release).toHaveBeenCalledTimes(1);
+});
+
+test("分屏关闭其中一个对比视图不释放仍在使用的草稿", () => {
+  const editor = useEditorStore();
+  const diff = useArchiveDiffStore();
+  editor.openCompareTab();
+  editor.split("columns");
+  diff.setDraft("a.equ", "edited", "original");
+  editor.closeTab(-999, "pane-2");
+  expect(diff.isDraftDirty).toBe(true);
+  expect(api.Release).not.toHaveBeenCalled();
+  editor.closeTab(-999, "pane-1");
+  expect(api.Release).toHaveBeenCalledTimes(1);
+});
+
+test("归档重载不把对比页伪索引传给 GetFile", async () => {
+  const editor = useEditorStore();
+  editor.openCompareTab();
+  await editor.refreshAfterArchiveChange(["__compare__"], true);
+  expect(api.GetFile).not.toHaveBeenCalled();
+  expect(editor.tabs[0]?.index).toBe(-999);
+});
+
+test("保存全部和活动标签通过对比保存接口写入草稿", async () => {
+  const editor = useEditorStore();
+  const diff = useArchiveDiffStore();
+  editor.openCompareTab();
+  diff.setDraft("a.equ", "edited", "original");
+  const save = vi.spyOn(diff, "mergeText").mockImplementation(async (_path, text) => {
+    diff.originalDraftText = text;
+    return true;
+  });
+  expect(await editor.saveAllDirty()).toBe(1);
+  expect(save).toHaveBeenCalledWith("a.equ", "edited");
+  expect(editor.dirtyCount).toBe(0);
+  diff.updateDraftText("again");
+  expect(await editor.saveActiveTab()).toBe(true);
+  expect(save).toHaveBeenLastCalledWith("a.equ", "again");
+});
+
+test("对比草稿未能保存时不能继续归档保存或备份", async () => {
+  const editor = useEditorStore();
+  const diff = useArchiveDiffStore();
+  editor.openCompareTab();
+  diff.setDraft("a.equ", "edited", "original");
+  vi.spyOn(diff, "mergeText").mockResolvedValue(false);
+  await expect(editor.saveAllDirty()).rejects.toThrow("对比草稿尚未保存");
+  expect(editor.dirtyCount).toBe(1);
 });
 
 test("自动换行在加载完成前按行长决定，普通文件默认开启", async () => {
@@ -258,4 +330,31 @@ test("规则刷新按未保存文本重算标注并保留草稿", async () => {
   expect(store.activeTab?.annotations[0]?.start).toBe(6);
   await store.refreshAnnotations();
   expect(api.GetAnnotationsForText).toHaveBeenLastCalledWith(1, "draft\n[name]\n123");
+});
+
+test("对比 Tab 开启时不调用 GetFile(-999)", async () => {
+  const store = useEditorStore();
+  store.openCompareTab();
+  expect(store.tabs.some((t) => t.index === -999)).toBe(true);
+  await store.refreshRenderedText();
+  await store.refreshAnnotations();
+  expect(api.GetFile).not.toHaveBeenCalledWith(-999);
+  expect(api.GetAnnotationsForText).not.toHaveBeenCalledWith(-999, expect.anything());
+});
+
+test("AI 写入后同步文本基线，保留后端未保存标记，后续保存不被误当作本地草稿", async () => {
+  api.GetFileBasic.mockResolvedValue(meta(1, "old"));
+  const store = useEditorStore();
+  await store.openFile(1);
+  api.ResolveFiles.mockResolvedValue([{ fileIndex: 1, path: "map/1.lst", size: 3, dataType: 1 }]);
+  api.GetFile.mockResolvedValue({ ...meta(1, "new"), modified: true });
+  await store.syncMCPWorkspace();
+  expect(store.activeTab?.text).toBe("new");
+  expect(store.activeTab?.original).toBe("new");
+  expect(store.activeTab?.modified).toBe(true);
+  expect(store.dirtyCount).toBe(0);
+  expect(store.archiveDiffDrafts()).toEqual([]);
+  api.GetFile.mockResolvedValue({ ...meta(1, "new"), modified: false });
+  await store.syncMCPWorkspace();
+  expect(store.activeTab?.modified).toBe(false);
 });

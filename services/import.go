@@ -174,7 +174,21 @@ func (s *ArchiveService) ImportFiles(sourcePaths []string, targetDir, mode strin
 		return nil, errorsNoImportFiles()
 	}
 
+	return s.importPrepared(files, targetDir, mode)
+}
+
+func (s *ArchiveService) importPrepared(files []importFile, targetDir, mode string) (*ImportResult, error) {
+	return s.importPreparedRevision(files, targetDir, mode, "", 0)
+}
+func (s *ArchiveService) importPreparedRevision(files []importFile, targetDir, mode, workspace string, expectedRevision uint64) (*ImportResult, error) {
+	var err error
+
 	s.c.mu.Lock()
+	if workspace != "" && (s.c.mcpWorkspaceID != workspace || s.c.batchRevision != expectedRevision) {
+		s.c.mu.Unlock()
+		return nil, fmt.Errorf("STALE_IMPORT")
+	}
+
 	a := s.c.archive
 	if a == nil {
 		s.c.mu.Unlock()
@@ -330,6 +344,9 @@ func normalizeImportTargetDir(raw string) (string, error) {
 }
 
 func collectImportFiles(sourcePaths []string, targetDir string) ([]importFile, error) {
+	return collectImportFilesLimited(sourcePaths, targetDir, 0)
+}
+func collectImportFilesLimited(sourcePaths []string, targetDir string, maxFiles int) ([]importFile, error) {
 	selections := make([]importSelection, 0, len(sourcePaths))
 	seenSelections := make(map[string]struct{}, len(sourcePaths))
 	for _, rawPath := range sourcePaths {
@@ -400,6 +417,9 @@ func collectImportFiles(sourcePaths []string, targetDir string) ([]importFile, e
 		targetPath, err := normalizeNewFilePath(targetPath)
 		if err != nil {
 			return fmt.Errorf("来源 %q 映射到归档路径失败: %w", sourcePath, err)
+		}
+		if maxFiles > 0 && len(files) >= maxFiles {
+			return fmt.Errorf("IMPORT_LIMIT: 导入文件过多")
 		}
 		files = append(files, importFile{sourcePath: sourcePath, targetPath: targetPath})
 		return nil

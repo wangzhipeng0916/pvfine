@@ -181,3 +181,67 @@ func TestArchiveDiffExportDeletesReverseCacheAndRefresh(t *testing.T) {
 	}
 	waitDiff(t, diff, next.ID)
 }
+
+func TestArchiveDiffExportSelectionAndScopeFilter(t *testing.T) {
+	c, diff, path := diffFixture(t)
+	changed, _ := c.archive.Find("equipment/changed.equ")
+	deleted, _ := c.archive.Find("equipment/deleted.equ")
+	if _, err := c.archive.RemoveFiles([]int32{deleted}); err != nil {
+		t.Fatal(err)
+	}
+	changed, _ = c.archive.Find("equipment/changed.equ")
+	addDiffText(t, c.archive, "equipment/new.equ", "[name]\n`new`")
+	c.archive.AddFile("data/new.bin", []byte{0, 255, 1}, 99)
+	p, err := diff.Start(ArchiveDiffRequest{
+		Path: path,
+		Drafts: []ArchiveDiffDraft{
+			{FileIndex: changed, Path: "equipment/changed.equ", Text: "[name]\n`draft`"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status := waitDiff(t, diff, p.ID); status.State != "ready" {
+		t.Fatalf("status=%+v", status)
+	}
+
+	exports := NewExportService(c)
+
+	// 1. 过滤单个文件 scope
+	rSingle := ExportRequest{
+		Source: "archive-diff",
+		DiffID: p.ID,
+		Mode:   "direct",
+		Scopes: []string{"equipment/changed.equ"},
+	}
+	previewSingle, err := exports.Prepare(rSingle)
+	if err != nil || previewSingle.FileCount != 1 {
+		t.Fatalf("previewSingle=%+v err=%v", previewSingle, err)
+	}
+	if previewSingle.Files[0].Path != "equipment/changed.equ" {
+		t.Fatalf("unexpected export file: %s", previewSingle.Files[0].Path)
+	}
+
+	// 2. 过滤目录 scope (equipment/)
+	rDir := ExportRequest{
+		Source: "archive-diff",
+		DiffID: p.ID,
+		Mode:   "direct",
+		Scopes: []string{"equipment"},
+	}
+	previewDir, err := exports.Prepare(rDir)
+	if err != nil || previewDir.FileCount != 3 {
+		t.Fatalf("previewDir=%+v err=%v", previewDir, err)
+	}
+
+	// 3. 不存在 scope
+	rEmpty := ExportRequest{
+		Source: "archive-diff",
+		DiffID: p.ID,
+		Mode:   "direct",
+		Scopes: []string{"nonexistent/path"},
+	}
+	if _, err := exports.Prepare(rEmpty); err == nil {
+		t.Fatal("expected error for empty matched scopes")
+	}
+}

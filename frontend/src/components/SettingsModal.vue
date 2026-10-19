@@ -63,6 +63,7 @@ import { useEditorStore } from "../stores/editor";
 import { useExplorerStore } from "../stores/explorer";
 import { useImageStore } from "../stores/images";
 import ShortcutSettings from "./ShortcutSettings.vue";
+import MCPSettings from "./MCPSettings.vue";
 
 type TabKey = SettingsTab;
 
@@ -150,6 +151,7 @@ const tabs = [
   { id: "shortcuts" as const, label: "快捷键", icon: Keyboard24Regular },
   { id: "system" as const, label: "系统维护", icon: Wrench24Regular },
   { id: "about" as const, label: "关于", icon: Info24Regular },
+  { id: "mcp" as const, label: "MCP 服务", icon: Code24Regular },
 ];
 
 watch(activeTab, (tab) => {
@@ -1277,6 +1279,8 @@ function formatBytes(bytes: number): string {
         <div v-show="activeTab === 'shortcuts'" class="settings-tab-panel">
           <ShortcutSettings />
         </div>
+
+        <div v-if="activeTab === 'mcp'" class="settings-tab-panel"><MCPSettings /></div>
 
         <!-- Tab 6: 关于 -->
         <div v-show="activeTab === 'about'" class="settings-tab-panel about-panel">

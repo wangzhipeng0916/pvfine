@@ -119,6 +119,9 @@ func (c *closeCoordinator) handlerFor(window application.Window) func(*applicati
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed frontend/src/script-api.d.ts
+var scriptAPIDeclaration string
+
 func main() {
 	logOutput := services.CaptureLogs(log.Writer())
 	log.SetOutput(logOutput)
@@ -132,6 +135,11 @@ func main() {
 	// One file set service backs both the sidebar and the script API, so a
 	// scripted change and a manual save target the same document.
 	fileSetService := services.NewFileSetService()
+	archiveService := services.NewArchiveService(core)
+	editorService := services.NewEditorService(core, settingsService)
+	scriptService := services.NewScriptService(core, fileSetService)
+	exportService := services.NewExportService(core)
+	mcpService := services.NewMCPService(core, archiveService, editorService, scriptService, exportService, scriptAPIDeclaration)
 	runtimeLogLevel := slog.LevelWarn
 	if buildmode.Development {
 		runtimeLogLevel = slog.LevelInfo
@@ -145,13 +153,13 @@ func main() {
 		ErrorHandler:     func(err error) { services.LogServiceError(err) },
 		FileAssociations: []string{".pvf"},
 		Services: []application.Service{
-			application.NewService(services.NewArchiveService(core)),
-			application.NewService(services.NewEditorService(core, settingsService)),
+			application.NewService(archiveService),
+			application.NewService(editorService),
 			application.NewService(services.NewDropService(core)),
 			application.NewService(services.NewBatchService(core)),
-			application.NewService(services.NewScriptService(core, fileSetService)),
+			application.NewService(scriptService),
 			application.NewService(services.NewVersionService(core)),
-			application.NewService(services.NewExportService(core)),
+			application.NewService(exportService),
 			application.NewService(services.NewAnnotationService(core)),
 			application.NewService(services.NewRenderingService(core)),
 			application.NewService(services.NewRuleService(core)),
@@ -164,6 +172,7 @@ func main() {
 			application.NewService(fileSetService),
 			application.NewService(services.NewBookmarkService()),
 			application.NewService(services.NewArchiveDiffService(core)),
+			application.NewService(mcpService),
 			application.NewService(services.NewExtractionService(core)),
 		},
 		Assets: application.AssetOptions{

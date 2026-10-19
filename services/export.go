@@ -59,6 +59,8 @@ type exportFile struct {
 }
 
 type exportPlan struct {
+	mcpOwned bool
+
 	preview    ExportPreview
 	request    ExportRequest
 	archive    *pvf.Archive
@@ -91,7 +93,10 @@ func NewExportService(c *core) *ExportService {
 
 func (s *ExportService) Formats() []modpkg.Descriptor { return s.registry.List() }
 
-func (s *ExportService) Prepare(request ExportRequest) (result *ExportPreview, resultErr error) {
+func (s *ExportService) Prepare(request ExportRequest) (*ExportPreview, error) {
+	return s.prepare(request, false)
+}
+func (s *ExportService) prepare(request ExportRequest, mcpOwned bool) (result *ExportPreview, resultErr error) {
 	started := time.Now()
 	defer func() {
 		count := 0
@@ -105,6 +110,9 @@ func (s *ExportService) Prepare(request ExportRequest) (result *ExportPreview, r
 	defer finish()
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.plan != nil && s.plan.mcpOwned && !mcpOwned {
+		return nil, fmt.Errorf("EXPORT_PLAN_PENDING: MCP 导出预览待处理")
+	}
 	if request.Mode != "direct" && request.Mode != "mod" {
 		return nil, fmt.Errorf("未知导出模式: %s", request.Mode)
 	}
@@ -160,7 +168,7 @@ func (s *ExportService) Prepare(request ExportRequest) (result *ExportPreview, r
 	developmentLog("[pvfine:export] prepare phase=source files=%d skipped_tables=%d elapsed=%s",
 		len(changes), source.skippedTables, time.Since(phaseStarted).Round(time.Millisecond))
 	p := &exportPlan{
-		request: request, archive: s.c.archive, repo: s.c.versionRepo,
+		mcpOwned: mcpOwned, request: request, archive: s.c.archive, repo: s.c.versionRepo,
 		revision: s.c.batchRevision, generation: s.c.archiveGeneration,
 		loadID: s.c.versionLoadID, headID: s.c.versionHead.ID, created: time.Now(),
 		preview: ExportPreview{ID: fmt.Sprint(exportSequence.Add(1)), Warnings: []string{}},
@@ -270,6 +278,24 @@ func (s *ExportService) Prepare(request ExportRequest) (result *ExportPreview, r
 	}
 	if p.preview.FileCount == 0 {
 		return nil, errors.New("没有可导出的文件或可应用的 mod 内容")
+	}
+	// The legacy UI selection exporter renders unknown types as empty text.
+	// MCP direct exports preserve binary bytes so a directory export is usable.
+	if mcpOwned && request.Mode == "direct" && (request.Source == "selection" || request.Source == "memory") {
+		for index := range p.files {
+			fileIndex, ok := s.c.archive.Find(p.files[index].path)
+			if !ok {
+				continue
+			}
+			dataType := s.c.archive.File(fileIndex).DataType
+			if dataType != pvf.TypeScript && dataType != pvf.TypeUnicode {
+				raw, err := s.c.archive.RawBytes(fileIndex)
+				if err != nil {
+					return nil, err
+				}
+				p.files[index].data = append([]byte(nil), raw...)
+			}
+		}
 	}
 	if request.Source == "archive-diff" && !s.validLocked(p) {
 		return nil, ErrExportStale
@@ -441,28 +467,81 @@ func (s *ExportService) executeSelectedTo(id, dir string, excluded []string) (st
 		}
 		return result, err
 	}
-	destinations := make(map[string]bool)
-	for _, file := range p.files {
-		dest, err := safeExportPath(dir, file.path)
-		if err != nil {
-			return "", err
-		}
-		if destinations[canonicalExportDestination(dest)] {
-			return "", fmt.Errorf("导出路径冲突: %s", file.path)
-		}
-		destinations[canonicalExportDestination(dest)] = true
-	}
-	for _, file := range p.files {
-		dest, _ := safeExportPath(dir, file.path)
-		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-			return "", err
-		}
-		if err := os.WriteFile(dest, file.data, 0o644); err != nil {
-			return "", err
-		}
+	if err := writeDirectDirectory(dir, p.files); err != nil {
+		return "", err
 	}
 	s.plan = nil
 	return dir, nil
+}
+
+// writeDirectDirectory 将文件列表安全、高效地写入目标目录。
+// 预先去重创建目录并利用并发 I/O 加速海量文件落地。
+// @author flobit
+func writeDirectDirectory(dir string, files []exportFile) error {
+	destinations := make(map[string]bool, len(files))
+	fileDests := make([]string, len(files))
+	uniqueDirs := make(map[string]struct{})
+
+	for i, file := range files {
+		dest, err := safeExportPath(dir, file.path)
+		if err != nil {
+			return err
+		}
+		canon := canonicalExportDestination(dest)
+		if destinations[canon] {
+			return fmt.Errorf("导出路径冲突: %s", file.path)
+		}
+		destinations[canon] = true
+		fileDests[i] = dest
+		uniqueDirs[filepath.Dir(dest)] = struct{}{}
+	}
+
+	for parentDir := range uniqueDirs {
+		if err := os.MkdirAll(parentDir, 0o755); err != nil {
+			return err
+		}
+	}
+
+	workers := min(len(files), 16)
+	if len(files) <= 32 || workers <= 1 {
+		for i, file := range files {
+			if err := os.WriteFile(fileDests[i], file.data, 0o644); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	var firstErr atomic.Pointer[error]
+	var wg sync.WaitGroup
+	chunkSize := (len(files) + workers - 1) / workers
+
+	for w := 0; w < workers; w++ {
+		start := w * chunkSize
+		end := min(start+chunkSize, len(files))
+		if start >= end {
+			break
+		}
+		wg.Add(1)
+		go func(s, e int) {
+			defer wg.Done()
+			for i := s; i < e; i++ {
+				if firstErr.Load() != nil {
+					return
+				}
+				if err := os.WriteFile(fileDests[i], files[i].data, 0o644); err != nil {
+					firstErr.CompareAndSwap(nil, &err)
+					return
+				}
+			}
+		}(start, end)
+	}
+
+	wg.Wait()
+	if errPtr := firstErr.Load(); errPtr != nil {
+		return *errPtr
+	}
+	return nil
 }
 
 func writeModDirectory(parent string, pkg modpkg.Package, writer modpkg.Writer) (string, error) {
