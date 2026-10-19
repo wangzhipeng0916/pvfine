@@ -1,0 +1,4054 @@
+{
+  "version": 1,
+  "description": "pvfine 提取中心引用边目录。每条边的 section 名与记录宽度均来自 86 版 Script.pvf 的 ParseScriptView 实测（见 docs/提取中心设计.md 附录 A）。仅收录宽度已实测确认的定宽记录；未确认的引用位保留为 Unmodeled，由边目录覆盖率队列驱动补齐。",
+  "categories": [
+    {
+      "id": "scene",
+      "name": "场景与副本",
+      "order": 1,
+      "extensions": [
+        ".dgn",
+        ".map",
+        ".twn",
+        ".tbl",
+        ".wdm"
+      ],
+      "relations": [
+        "map",
+        "地下城",
+        "城镇",
+        "区域",
+        "副本接口"
+      ]
+    },
+    {
+      "id": "mob",
+      "name": "怪物与 AI",
+      "order": 2,
+      "extensions": [
+        ".mob",
+        ".aic",
+        ".ai",
+        ".key"
+      ],
+      "relations": [
+        "APC",
+        "怪物"
+      ]
+    },
+    {
+      "id": "act",
+      "name": "战斗行为",
+      "order": 3,
+      "extensions": [
+        ".atk",
+        ".act",
+        ".als"
+      ]
+    },
+    {
+      "id": "obj",
+      "name": "被动对象与特效",
+      "order": 4,
+      "extensions": [
+        ".obj",
+        ".ptl"
+      ],
+      "relations": [
+        "被动对象"
+      ]
+    },
+    {
+      "id": "ani",
+      "name": "动画与贴图",
+      "order": 5,
+      "extensions": [
+        ".ani",
+        ".til"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "物品与装备",
+      "order": 6,
+      "extensions": [
+        ".equ",
+        ".stk"
+      ],
+      "relations": [
+        "物品",
+        "装备",
+        "道具"
+      ]
+    },
+    {
+      "id": "attach",
+      "name": "附件与宠物",
+      "order": 7,
+      "extensions": [
+        ".apd",
+        ".cre"
+      ],
+      "relations": [
+        "apd",
+        "宠物"
+      ]
+    },
+    {
+      "id": "skill",
+      "name": "技能",
+      "order": 8,
+      "extensions": [
+        ".skl"
+      ],
+      "relations": [
+        "技能",
+        "职业"
+      ]
+    },
+    {
+      "id": "ui",
+      "name": "界面与布局",
+      "order": 9,
+      "extensions": [
+        ".ui",
+        ".xui",
+        ".lay"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "dgn.pathgateObject",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "pathgate object",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "registry",
+        "relation": "被动对象"
+      },
+      "note": "实测 128/128 命中，每列都是入口对象 ID。pvfsimple 用 [\\x20-\\x7f]+ 逐 token 提取，会把名字也当 ID。"
+    },
+    {
+      "id": "dgn.mapSpecification",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "map specification",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 4,
+        "refOffsets": [
+          3
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "map"
+      },
+      "note": "实测记录为 `\"map\" x y mapID` 四列，ID 在第 4 列。这是 86 版副本到地图的主通道；pvfsimple 只走 [seal door map index]，在 86 上仅 11/128 命中。"
+    },
+    {
+      "id": "dgn.sealDoorMap",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "seal door map index",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "registry",
+        "relation": "map"
+      },
+      "note": "实测 11/128。"
+    },
+    {
+      "id": "dgn.difficultyTables",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "monsterapc diff table",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry"
+      },
+      "note": "附录 A.3 实测遗漏边，目标 .tbl。"
+    },
+    {
+      "id": "dgn.revisionTable",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "revision table",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry"
+      },
+      "note": "附录 A.3 实测遗漏边，目标 .tbl。"
+    },
+    {
+      "id": "dgn.cutsceneImage",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "cutscene image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "客户端图引用，只登记不跟随。"
+    },
+    {
+      "id": "dgn.minimapImage",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "minimap image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      }
+    },
+    {
+      "id": "dgn.worldmapPattern",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "worldmap pattern info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      }
+    },
+    {
+      "id": "map.passiveObject",
+      "extensions": [
+        ".map"
+      ],
+      "section": "passive object",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 4,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "被动对象"
+      },
+      "note": "实测 109/121，记录为四列 `ID x y ?`。"
+    },
+    {
+      "id": "map.monster",
+      "extensions": [
+        ".map"
+      ],
+      "section": "monster",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 10,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "怪物"
+      },
+      "note": "实测 115/121，记录 `ID ? ? x y ? ? ? [fixed] [normal]` 十列。"
+    },
+    {
+      "id": "map.aiCharacter",
+      "extensions": [
+        ".map"
+      ],
+      "section": "ai character",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 4,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "APC"
+      },
+      "note": "relation \"APC\" 对应 aicharacter/aicharacter.lst，实测存在但未登记在 config/lists.json；调用方需自行补入，否则本边产出 Missing 而非静默丢失。"
+    },
+    {
+      "id": "map.specialPassiveObject",
+      "extensions": [
+        ".map"
+      ],
+      "section": "special passive object",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "countPrefixed": {
+          "prefixTokens": 5,
+          "countIndex": 4,
+          "itemTokens": 6,
+          "kindIndex": 0,
+          "nestedKinds": [
+            "hellparty"
+          ],
+          "payloadRefs": [
+            {
+              "kind": "trap",
+              "slot": 1,
+              "relation": "被动对象"
+            },
+            {
+              "kind": "monster",
+              "slot": 1,
+              "relation": "怪物"
+            }
+          ],
+          "payloadNote": "载荷列义依赖对象类型（知识库 dungeon-map-spawn-entry-clear-resource-fields：『列义依赖对象类型；不能把所有数字统一写成物品、概率或动作』），故按 (kind, 槽位) 逐条声明。86 全量实测 5467 个 .map：`[trap] 槽1` 3589/3589 = 100% 命中 被动对象（同范围随机基线最佳 41%）；`[monster] 槽1` 1805/1805 = 100% 命中 怪物（基线 26%）。对照：记录首列（已知被动对象引用）命中 17997/17999 = 100%，证明判定方法能识别真引用。未声明的槽位一律保持候选：`item` 各槽取值全是小号，16 张表全部命中（无区分度）；`trap/quest` 的其余槽与 `[hellparty]` 内部三元组亦无区分度——后者依知识库 hellparty-visualization-fields 是 group_id/weight/wave，group_id 需在 etc/hellparty.etc [group index] 内闭合，根本不是 registry ID。",
+          "nestedRefs": [
+            {
+              "kind": "hellparty",
+              "width": 3,
+              "offset": 0,
+              "sectionIndex": {
+                "path": "etc/hellparty.etc",
+                "indexSection": "group index",
+                "memberSection": "group",
+                "memberWidth": 2,
+                "kindOffset": 1,
+                "routes": [
+                  {
+                    "kind": "0",
+                    "relation": "怪物"
+                  },
+                  {
+                    "kind": "1",
+                    "relation": "APC"
+                  }
+                ]
+              }
+            }
+          ],
+          "nestedNote": "配对块 `[hellparty] … [/hellparty]` 的值按三元组读取（知识库 hellparty-visualization-fields：「每组三个值表示 group_id / weight / wave」「group_id 必须在 etc/hellparty.etc [group index] 中闭合」），所以只有第 0 列声明成引用，weight 与 wave 保持候选，不猜。86 实测：14,475 个 .map 里 114 个含该块、1,841 个三元组、去重引用 135 个 group，其中 10 个索引里查不到（知识库《可视化输出字段》要求报告 missing-index，这里落成 StateMissing）。索引侧 etc/hellparty.etc：145 组 / 520 成员，`[group]` 每行形如 `档位标签 member kind member kind…`，kind=0→怪物(monster/monster.lst)、1→APC(aicharacter/aicharacter.lst)，其他 kind 一律 unknown、不回退猜测。引用到的组成员 456/456 命中 registry，去重可达 119 个条目（.aic 99 / .mob 20）。闭包增量实测：hell_38142(3,0)normal.map 134→331 条目（+197，新增 .key 126 / .ai 52 / .aic 13），hell_floatingcastle.map 60→194（+134，该图另有 4 个组索引缺失）。"
+        }
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "被动对象"
+      },
+      "note": "86 全量实测（14475 个 .map 中 5467 个含本段）：记录形状为 `ID x y z n <item>×n`，n 在第 5 列；普通条目（trap/item/quest/monster 等）为 6 列 —— kind 1 列 + 5 列载荷（末列为 -1 填充）；`hellparty` 是配对块 `[hellparty] … [/hellparty]`，其内部是 `ID 概率 档位` 三元组。计数列 + 条目宽度让记录自同步，无需源码行，也无需渲染规则。此前按行切记录的实现因本段无固定宽度而放行全部整数，把载荷坐标也当成了引用，故一并改掉。"
+    },
+    {
+      "id": "map.tile",
+      "extensions": [
+        ".map"
+      ],
+      "section": "tile",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".til"
+        ]
+      }
+    },
+    {
+      "id": "map.animation",
+      "extensions": [
+        ".map"
+      ],
+      "section": "animation",
+      "tokenTypes": [
+        6
+      ],
+      "record": {
+        "width": 5,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "实测记录 `path [layer] x y z` 五列。"
+    },
+    {
+      "id": "map.backgroundAni",
+      "extensions": [
+        ".map"
+      ],
+      "section": "filename",
+      "under": [
+        "background animation",
+        "ani info"
+      ],
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "map.importScript",
+      "extensions": [
+        ".map"
+      ],
+      "section": "import script",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".map"
+        ],
+        "roots": [
+          "map"
+        ]
+      },
+      "note": "pvfsimple 固定展开 2 层，本实现在闭包深度上限内自然收敛。值写作 `Common/(F)Gate_Seria.map`，实测归档根与 owner 两级都不命中（0/72），加 map/ 根后才是 `map/common/(f)gate_seria.map`。"
+    },
+    {
+      "id": "twn.area",
+      "extensions": [
+        ".twn"
+      ],
+      "section": "area",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".map"
+        ],
+        "roots": [
+          "map"
+        ]
+      },
+      "note": "实测 [area] 是 `路径 [类型]` 交替，且夹着 [minimap rect]/[normal] 这类块标签，定宽记录会把标签当成引用列（原声明 width:3 refOffsets:[1] 实测 0/217，取到的全是标签）。改为不定宽 + 由 looksLikeArchiveEntry 只放过路径值。值相对 **map/ 根**书写：town/alfhlyra.twn 的 `Alfhlyra/Alfhlyra.map` 实指 map/alfhlyra/alfhlyra.map（owner-relative 与归档根两级都不命中）。"
+    },
+    {
+      "id": "twn.enteringTitle",
+      "extensions": [
+        ".twn"
+      ],
+      "section": "entering title",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "由 cmd/extract 判据1②（未声明但可解析）实测补入：town/silvercrown.twn 引用 `Title/SilverCrown.ani`，此前覆盖率指标完全看不见。"
+    },
+    {
+      "id": "twn.cutsceneImage",
+      "extensions": [
+        ".twn"
+      ],
+      "section": "cutscene image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      }
+    },
+    {
+      "id": "mob.waitingMotion",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "waiting motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.moveMotion",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "move motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.attackMotion",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "attack motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.damageMotion1",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "damage motion 1",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.damageMotion2",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "damage motion 2",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.downMotion",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "down motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.sitMotion",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "sit motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.overturnMotion",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "overturn motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.readyAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "ready action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "附录 A.3 实测遗漏边。"
+    },
+    {
+      "id": "mob.etcMotion",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "etc motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "附录 A.3 实测遗漏边，实测 11/120。"
+    },
+    {
+      "id": "mob.attackInfo",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "attack info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".atk"
+        ]
+      }
+    },
+    {
+      "id": "mob.etcAttackInfo",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "etc attack info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".atk"
+        ]
+      },
+      "note": "附录 A.3 实测遗漏边。"
+    },
+    {
+      "id": "mob.aiPattern",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "ai pattern",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      }
+    },
+    {
+      "id": "mob.faceImage",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "face image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      }
+    },
+    {
+      "id": "aic.aiPattern",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "ai pattern",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      }
+    },
+    {
+      "id": "aic.keyStream",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "key stream",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".key"
+        ]
+      },
+      "note": "判据1② 实测漏边：值是同目录裸文件名（如 `1.key`），20 条。"
+    },
+    {
+      "id": "obj.stringData",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "string data",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani",
+          ".ptl",
+          ".til"
+        ]
+      },
+      "note": "附录 A.3 最大遗漏项，实测 78/120。[string data] 也承载非路径字符串，由 looksLikeEntryPath 与 expectExt 双重过滤。**2026-10-18 任务 #40 放宽**：expectExt 原只收 `.ani`，于是同段里能解析到真实条目的 `.ptl`/`.til` 全被记成 unknown（一个世界地图包里就有 22+18 条）。86 全档对账：值 6,653 不变，解析 4,633 → **6,535（0.696 → 0.982）**，缺失 91 不变（`../../../ActionObject/...ptl` 逃出归档根，见 §13.20），歧义 1,929 → 27（歧义几乎全是 `.img`，那些本该按 asset 边走——同一条段里混两种目标仍缺表达能力，见 §16.6 第 2 条）。"
+    },
+    {
+      "id": "obj.basicMotion",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "basic motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "附录 A.3，实测值含 `../../../Map/GrakKarak/Animation/StonePillar0.ani` 这类深层相对。"
+    },
+    {
+      "id": "obj.etcMotion",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "etc motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "附录 A.3，实测 30/120。"
+    },
+    {
+      "id": "obj.attackInfo",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "attack info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".atk"
+        ]
+      },
+      "note": "附录 A.3。"
+    },
+    {
+      "id": "obj.destroyParticle",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "destroy particle",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ptl"
+        ]
+      },
+      "note": "附录 A.3。"
+    },
+    {
+      "id": "ptl.object",
+      "extensions": [
+        ".ptl"
+      ],
+      "section": "object",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "由 edge-bench 队列实测补入：粒子对象的 [object] 段以反引号路径引用 .ani，实测样例 `../Ani/DestParticle1.ani`，单副本出现 9 次。同段的 [object type] 为数值 ID，registry 归属待阶段 2 确认。"
+    },
+    {
+      "id": "action.useAnimation",
+      "extensions": [
+        ".als",
+        ".obj",
+        ".key",
+        ".ai"
+      ],
+      "section": "use animation",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "实测 .als 114/121。与 .ani 互引构成环，由闭包去重吸收。"
+    },
+    {
+      "id": "act.baseAni",
+      "extensions": [
+        ".act"
+      ],
+      "section": "base ani",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "实测 119/121，值含 `../animation/proc.ani`。"
+    },
+    {
+      "id": "act.subAni",
+      "extensions": [
+        ".act"
+      ],
+      "section": "sub ani",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "实测 53/121。"
+    },
+    {
+      "id": "act.isIndex",
+      "extensions": [
+        ".act"
+      ],
+      "section": "is index",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "registry",
+        "relation": "怪物"
+      },
+      "note": "实测 [IS INDEX] 出现在 TRIGGER>CHECKUP 下且伴随 [IS OBJECT TYPE]>[MONSTER]，故按怪物 registry 解。"
+    },
+    {
+      "id": "action.createObject",
+      "extensions": [
+        ".act",
+        ".key"
+      ],
+      "section": "index",
+      "under": [
+        "create passiveobject"
+      ],
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "registry",
+        "relation": "被动对象"
+      },
+      "note": "实测 .act 27/121、.key 2/121。依赖 [INDEX] 必在 [CREATE PASSIVEOBJECT] 内这一结构约束。"
+    },
+    {
+      "id": "act.summonMonster",
+      "extensions": [
+        ".act"
+      ],
+      "section": "summon monster",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "怪物"
+      },
+      "note": "宽度取自 pvfsimple 的同名 section 正则；实测 .act 2/121，样本偏小，阶段 2 需扩样复核。"
+    },
+    {
+      "id": "act.appendage",
+      "extensions": [
+        ".act"
+      ],
+      "section": "appendage",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "registry",
+        "relation": "apd"
+      },
+      "note": "实测位于 BEHAVIOR 下且样本值为 0，被 noneValues 过滤。"
+    },
+    {
+      "id": "map.tileFiles",
+      "extensions": [
+        ".map"
+      ],
+      "section": "tile files",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".til"
+        ]
+      },
+      "note": "由全归档未声明队列补入：与 [tile] 是不同的 section，实测 86 出现 21344 次，样例 `../../AstrayThief/Tile/attileex.til`。"
+    },
+    {
+      "id": "mob.attackAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "attack action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry"
+      },
+      "note": "由全归档队列补入，实测 18380 次。知识库 monster-ai-action-attack-cross-layer 记为 .mob[attack action]→.ai/.act，故不限制扩展名。"
+    },
+    {
+      "id": "mob.aiByLevel",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "normal",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "按难度分档的专用 AI，实测各 17669 次，样例路径落在 .../ai/ 下。四个分档共用 mob.aiByLevel 前缀。"
+    },
+    {
+      "id": "mob.aiByLevelExpert",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "expert",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      }
+    },
+    {
+      "id": "mob.aiByLevelKing",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "king",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      }
+    },
+    {
+      "id": "mob.aiByLevelMaster",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "master",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      }
+    },
+    {
+      "id": "mob.aiByLevelSlayer",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "slayer",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "由队列第二轮反馈补入，样例 `ai/Event.ai`（无目录相对，正是扩展名长度修正后才可见的形状）。"
+    },
+    {
+      "id": "equ.aniScript",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "equipment ani script",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".lay"
+        ]
+      },
+      "note": "由全归档队列补入，实测 297812 次（全库最大缺口），目标为 .lay 布局脚本。pvfsimple 的 3844 行职业×layer 硬表正是从这一族路径反推出来的。"
+    },
+    {
+      "id": "ani.frameImage",
+      "extensions": [
+        ".ani"
+      ],
+      "section": "image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "实测记录 `path 帧号`。空反引号（无图）由值过滤自然跳过。"
+    },
+    {
+      "id": "til.image",
+      "extensions": [
+        ".til"
+      ],
+      "section": "image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      }
+    },
+    {
+      "id": "item.icon",
+      "extensions": [
+        ".equ",
+        ".stk"
+      ],
+      "section": "icon",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      }
+    },
+    {
+      "id": "item.fieldImage",
+      "extensions": [
+        ".equ",
+        ".stk"
+      ],
+      "section": "field image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      }
+    },
+    {
+      "id": "item.iconAnimation",
+      "extensions": [
+        ".equ",
+        ".stk"
+      ],
+      "section": "icon animation",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      }
+    },
+    {
+      "id": "mob.dropItem",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "item",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "掉落。86 全量实测 5705 个 .mob：`[item]` 634 数据行，字段数分布 2列×406 / 4列×73 / 6列×110 / 8列×41 / 10列×2 / 12列×1 / 14列×1，全为偶数 ⇒ 记录形状是 (`物品ID`, `概率`) 对的重复，扁平流按 2 取模即可精确落在 ID 列，无需按源码行切分。知识库 monster-entry-link-router 同结论：掉落块首个数值按物品 ID 解析，物品走 装备/道具 并集 registry。样例 goblin.mob = `1000 50 1047 200 1004 100`。"
+    },
+    {
+      "id": "mob.deathTowerItem",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "death tower item",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "86 实测 22 行：2列×20 / 4列×2，同为 (`物品ID`, `概率`) 对。"
+    },
+    {
+      "id": "mob.superChampionDropItem",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "super champion drop item",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "86 实测 16 行，全部 2 列。"
+    },
+    {
+      "id": "mob.catchItem",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "catch item",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "86 实测仅 4 行，均为 3 列 ⇒ 宽度 3。知识库记录过 ID `10002121` 在 `100` 版之外的目标里未命中 registry，属数据边界而非可猜物品，故本边允许产出 missing。"
+    },
+    {
+      "id": "obj.basicAction",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "basic action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：13,650 值 / 13,530 解析 = 99.1%，目标全是 .act；缺失样例是 Action/gravity.act 这类归档里真没有的文件。"
+    },
+    {
+      "id": "obj.etcAction",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "etc action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：10,526 / 10,269 = 97.6%，目标 .act。"
+    },
+    {
+      "id": "obj.particleFile",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "file",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ptl"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：354 / 306 = 86.4%，目标 .ptl；缺失值多为没有扩展名的残名（direzie_effect_），用 expectExt 收紧。"
+    },
+    {
+      "id": "obj.etcAttackInfo",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "etc attack info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".atk"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：652 / 650 = 99.7%，目标 .atk。"
+    },
+    {
+      "id": "act.particleFilename",
+      "extensions": [
+        ".act"
+      ],
+      "section": "particle filename",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ptl"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：7,754 / 7,644 = 98.6%，目标 .ptl（section 名大写 [PARTICLE FILENAME] 也命中，边目录按大小写不敏感匹配）。"
+    },
+    {
+      "id": "act.particle",
+      "extensions": [
+        ".act"
+      ],
+      "section": "particle",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ptl"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：5,012 / 4,846 = 96.7%，目标 .ptl。"
+    },
+    {
+      "id": "etc.skill",
+      "extensions": [
+        ".etc"
+      ],
+      "section": "skill",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测：9,723 值 / 9,697 解析 = 99.7%，目标全是 .ani。rendering 声明该段记录宽 7，实测每条记录恰有 1 个反引号路径、但列位不固定（7 列各 1,371–1,398 个，均匀分布），所以宽度取 7、refOffsets 覆盖全部列，由 tokenTypes=[6] 与 expectExt 决定哪些值真的是引用——不是把整段当引用。",
+      "record": {
+        "width": 7,
+        "refOffsets": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      }
+    },
+    {
+      "id": "mob.waitingAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "waiting action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：4,284 / 4,265 = 99.6%，目标 .act。注意与已声明的 [ready action](→.ani) 不是同一列义。"
+    },
+    {
+      "id": "mob.moveAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "move action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：3,942 / 3,925 = 99.6%，目标 .act。"
+    },
+    {
+      "id": "mob.damageAction1",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "damage action 1",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：3,607 / 3,591 = 99.6%，目标 .act。"
+    },
+    {
+      "id": "mob.damageAction2",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "damage action 2",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：3,529 / 3,511 = 99.5%，目标 .act。"
+    },
+    {
+      "id": "mob.overturnAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "overturn action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：2,782 / 2,760 = 99.2%，目标 .act。"
+    },
+    {
+      "id": "mob.downAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "down action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：2,753 / 2,741 = 99.6%，目标 .act。"
+    },
+    {
+      "id": "mob.sitAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "sit action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：2,667 / 2,654 = 99.5%，目标 .act。"
+    },
+    {
+      "id": "mob.procAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "proc action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：1,590 / 1,571 = 98.8%，目标 .act。"
+    },
+    {
+      "id": "mob.comeInAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "come in action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：171 / 170 = 99.4%，目标 .act。"
+    },
+    {
+      "id": "aic.procAction",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "proc action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：148 / 146 = 98.6%，目标 .act。"
+    },
+    {
+      "id": "ai.importAI",
+      "extensions": [
+        ".ai"
+      ],
+      "section": "import ai",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：3,047 / 3,016 = 99.0%，目标 .ai（AI 脚本互相 import）；31 条是 `1_d.ai` 这类同名多条、无法判定，落 unknown 而不是猜一个。"
+    },
+    {
+      "id": "chr.etcMotion",
+      "extensions": [
+        ".chr"
+      ],
+      "section": "etc motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：2,510 / 2,507 = 99.9%，目标 .ani。"
+    },
+    {
+      "id": "chr.etcAttackInfo",
+      "extensions": [
+        ".chr"
+      ],
+      "section": "etc attack info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".atk"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：1,145 / 1,145 = 100%，目标 .atk。"
+    },
+    {
+      "id": "map.basicAction",
+      "extensions": [
+        ".map"
+      ],
+      "section": "basic action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：1,601 / 1,595 = 99.6%，目标 .act。"
+    },
+    {
+      "id": "map.extendedTile",
+      "extensions": [
+        ".map"
+      ],
+      "section": "extended tile",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".til"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：41 / 41 = 100%，目标 .til（#21 深渊图暴露）。"
+    },
+    {
+      "id": "equ.iconMark",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "icon mark",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：15,701 值全部指向 .img，按 item.icon 的既有口径记为客户端资产、不跟随（跟随会把上万图标拉进文本产物）。"
+    },
+    {
+      "id": "stk.iconMark",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "icon mark",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：9,577 值全部指向 .img，同上。"
+    },
+    {
+      "id": "skl.icon",
+      "extensions": [
+        ".skl"
+      ],
+      "section": "icon",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：5,568 值全部指向 .img，同上。"
+    },
+    {
+      "id": "equ.extraIcon",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "extra icon",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 全归档实测（715,537 条目 / 28 候选类交叉核对）：2,760 值全部指向 .img，同上。"
+    },
+    {
+      "id": "mob.actionList",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "action list",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,951 值 / 1,939 解析 = 99.4%，目标 .act。"
+    },
+    {
+      "id": "mob.lastAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "last action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,524 值 / 1,517 解析 = 99.5%，目标 .act。"
+    },
+    {
+      "id": "mob.etcAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "etc action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：591 值 / 589 解析 = 99.7%，目标 .act。"
+    },
+    {
+      "id": "mob.throwAttack",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "throw attack",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ptl"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：536 值 / 523 解析 = 97.6%，目标 .ptl。"
+    },
+    {
+      "id": "obj.lastAction",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "last action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,140 值 / 1,121 解析 = 98.3%，目标 .act。"
+    },
+    {
+      "id": "act.attack",
+      "extensions": [
+        ".act"
+      ],
+      "section": "attack",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,342 值 / 1,309 解析 = 97.5%，目标 .act；3 条动态模板。。"
+    },
+    {
+      "id": "act.damage",
+      "extensions": [
+        ".act"
+      ],
+      "section": "damage",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：669 值 / 663 解析 = 99.1%，目标 .act。"
+    },
+    {
+      "id": "act.stay",
+      "extensions": [
+        ".act"
+      ],
+      "section": "stay",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：640 值 / 637 解析 = 99.5%，目标 .act。"
+    },
+    {
+      "id": "act.move",
+      "extensions": [
+        ".act"
+      ],
+      "section": "move",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：635 值 / 631 解析 = 99.4%，目标 .act。"
+    },
+    {
+      "id": "equ.auroraGraphicEffects",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "aurora graphic effects",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,865 值 / 1,855 解析 = 99.5%，目标 .ani。"
+    },
+    {
+      "id": "equ.customAnimation",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "custom animation",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,851 值 / 1,829 解析 = 98.8%，目标 .ani。"
+    },
+    {
+      "id": "equ.attackMotion",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "attack motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,093 值 / 1,026 解析 = 93.9%，目标 .ani；67 条目标确实不在本归档（头像/时装内容），仍按真引用记录。。"
+    },
+    {
+      "id": "map.scrollAnimation",
+      "extensions": [
+        ".map"
+      ],
+      "section": "scroll animation",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,122 值 / 1,115 解析 = 99.4%，目标 .ani。"
+    },
+    {
+      "id": "dgn.mazeMinimapAniIcon",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "maze minimap ani icon",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：979 值 / 979 解析 = 100.0%，目标 .ani。"
+    },
+    {
+      "id": "npc.fieldAnimation",
+      "extensions": [
+        ".npc"
+      ],
+      "section": "field animation",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：761 值 / 759 解析 = 99.7%，目标 .ani。"
+    },
+    {
+      "id": "etc.replay",
+      "extensions": [
+        ".etc"
+      ],
+      "section": "replay",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".rep"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：636 值 / 635 解析 = 99.8%，目标 .rep。"
+    },
+    {
+      "id": "cre.skillMotion",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "skill motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：613 值 / 604 解析 = 98.5%，目标 .ani。"
+    },
+    {
+      "id": "cre.randomMotion",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "random motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani",
+          ".als"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：573 值 / 563 解析 = 98.3%，目标 .ani/.als。"
+    },
+    {
+      "id": "cre.basicMotion",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "basic motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：550 值 / 540 解析 = 98.2%，目标 .ani。"
+    },
+    {
+      "id": "cre.responseMotion",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "response motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani",
+          ".als"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：537 值 / 527 解析 = 98.1%，目标 .ani/.als。"
+    },
+    {
+      "id": "cre.runMotion",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "run motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：528 值 / 518 解析 = 98.1%，目标 .ani。"
+    },
+    {
+      "id": "cre.walkMotion",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "walk motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：528 值 / 518 解析 = 98.1%，目标 .ani。"
+    },
+    {
+      "id": "cre.etcMotion",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "etc motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：333 值 / 332 解析 = 99.7%，目标 .ani。"
+    },
+    {
+      "id": "cre.skillInfo",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "skill info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".skl"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：398 值 / 398 解析 = 100.0%，目标 .skl。"
+    },
+    {
+      "id": "cre.attackInfo",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "attack info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".atk"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：332 值 / 322 解析 = 97.0%，目标 .atk。"
+    },
+    {
+      "id": "evt.npc",
+      "extensions": [
+        ".evt"
+      ],
+      "section": "npc",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：379 值 / 370 解析 = 97.6%，目标 .ani；9 条动态模板。。"
+    },
+    {
+      "id": "key.orImportKey",
+      "extensions": [
+        ".key"
+      ],
+      "section": "or import key",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".key"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：445 值 / 408 解析 = 91.7%，目标 .key；37 条是同名 key 文件、无法判定目标，落 unknown 而不是猜。。"
+    },
+    {
+      "id": "equ.imagePacks",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "image packs",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：1,568 值全部指向 .img（按 entry 解会撞同名歧义，实测 100% 判不了），按 item.icon 口径记为客户端资产、不跟随。"
+    },
+    {
+      "id": "skl.skillPreloadingImage",
+      "extensions": [
+        ".skl"
+      ],
+      "section": "skill preloading image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：809 值全部指向 .img（按 entry 解会撞同名歧义，实测 100% 判不了），按 item.icon 口径记为客户端资产、不跟随。"
+    },
+    {
+      "id": "npc.popupFace",
+      "extensions": [
+        ".npc"
+      ],
+      "section": "popup face",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：646 值全部指向 .img（按 entry 解会撞同名歧义，实测 100% 判不了），按 item.icon 口径记为客户端资产、不跟随。"
+    },
+    {
+      "id": "npc.smallFace",
+      "extensions": [
+        ".npc"
+      ],
+      "section": "small face",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：607 值全部指向 .img（按 entry 解会撞同名歧义，实测 100% 判不了），按 item.icon 口径记为客户端资产、不跟随。"
+    },
+    {
+      "id": "npc.bigFace",
+      "extensions": [
+        ".npc"
+      ],
+      "section": "big face",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：574 值全部指向 .img（按 entry 解会撞同名歧义，实测 100% 判不了），按 item.icon 口径记为客户端资产、不跟随。"
+    },
+    {
+      "id": "stk.avatarPackagePreviewInfo",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "avatar package preview info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：467 值全部指向 .img（按 entry 解会撞同名歧义，实测 100% 判不了），按 item.icon 口径记为客户端资产、不跟随。"
+    },
+    {
+      "id": "dgn.worldmapInfoAsset",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "worldmap info",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：368 值全部指向 .img（按 entry 解会撞同名歧义，实测 100% 判不了），按 item.icon 口径记为客户端资产、不跟随。"
+    },
+    {
+      "id": "etc.effectFileLevels",
+      "extensions": [
+        ".etc"
+      ],
+      "section": "effect file levels",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-17 任务 #23 第二批全归档实测（715,537 条目 / 43 候选类交叉核对）：559 值全部指向 .img（按 entry 解会撞同名歧义，实测 100% 判不了），按 item.icon 口径记为客户端资产、不跟随（值里混有反斜杠分隔，asset 记录原样）。"
+    },
+    {
+      "id": "stk.stringData",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "string data",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani",
+          ".ptl"
+        ]
+      },
+      "note": "2026-10-17 任务 #23 第二批实测：该段是混合段——6,502 值里 158 个指向归档内 .ani/.ptl（如 PassiveObject/ThrowItem/Particle/Bomb.ptl，判据 1 的漏边就是它），其余 6,344 个指向 .img。按 entry 声明才能拿到那 158 个真依赖；.img 值由 looksLikeAssetPath 落 unknown 并带「该 section 应声明为 asset 边」提示，不算成功也不算失败。对照 .obj [string data]（obj.stringData，expectExt .ani）与 .equ [string data]（602 值全是 %d 模板，未声明）。"
+    },
+    {
+      "id": "act.path",
+      "extensions": [
+        ".act"
+      ],
+      "section": "path",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：292 值 / 252 解析 = 0.863（缺失 40、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 40 条缺失是归档里确实没有的 .ani（样例 Character/Common/Animation/fallingeffect_boost_alo1.ani），形状判断本身成立。"
+    },
+    {
+      "id": "act.changeAttackInfo",
+      "extensions": [
+        ".act"
+      ],
+      "section": "change attackinfo",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".atk"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：268 值 / 263 解析 = 0.981（缺失 5、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "act.defaultAttackInfo",
+      "extensions": [
+        ".act"
+      ],
+      "section": "default attackinfo",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".atk"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：176 值 / 171 解析 = 0.972（缺失 5、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "act.aiByLevel",
+      "extensions": [
+        ".act"
+      ],
+      "section": "normal",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：300 值 / 261 解析 = 0.870（缺失 0、歧义 39）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 39 条歧义是裸文件名（Action.ai / Action2.ai）在全档存在多个同名条目，按 D1『不猜』判 unknown。同名 .mob 段值是全路径故 mob.aiByLevel 能到 0.97。"
+    },
+    {
+      "id": "act.aiByLevelExpert",
+      "extensions": [
+        ".act"
+      ],
+      "section": "expert",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：168 值 / 139 解析 = 0.827（缺失 0、歧义 29）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 歧义 29 条同 act.aiByLevel（裸文件名同名多个），不猜。"
+    },
+    {
+      "id": "act.aiByLevelKing",
+      "extensions": [
+        ".act"
+      ],
+      "section": "king",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：168 值 / 139 解析 = 0.827（缺失 0、歧义 29）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 歧义 29 条同 act.aiByLevel（裸文件名同名多个），不猜。"
+    },
+    {
+      "id": "act.aiByLevelMaster",
+      "extensions": [
+        ".act"
+      ],
+      "section": "master",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：168 值 / 139 解析 = 0.827（缺失 0、歧义 29）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 歧义 29 条同 act.aiByLevel（裸文件名同名多个），不猜。"
+    },
+    {
+      "id": "act.aiByLevelSlayer",
+      "extensions": [
+        ".act"
+      ],
+      "section": "slayer",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：167 值 / 139 解析 = 0.832（缺失 0、歧义 28）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 歧义 28 条同 act.aiByLevel（裸文件名同名多个），不猜。"
+    },
+    {
+      "id": "act.subAniWithXYZ",
+      "extensions": [
+        ".act"
+      ],
+      "section": "sub ani with xyz",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：98 值 / 98 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "act.subAniWithXY",
+      "extensions": [
+        ".act"
+      ],
+      "section": "sub ani with xy",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：9 值 / 9 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "act.particleEmitter",
+      "extensions": [
+        ".act"
+      ],
+      "section": "particle emitter",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ptl"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：10 值 / 10 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "act.moveback",
+      "extensions": [
+        ".act"
+      ],
+      "section": "moveback",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：38 值 / 35 解析 = 0.921（缺失 3、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "act.down",
+      "extensions": [
+        ".act"
+      ],
+      "section": "down",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：132 值 / 130 解析 = 0.985（缺失 2、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 缺失样例 `Down.actt` —— 源数据把扩展名写错了，判 missing 正是要让它可见。"
+    },
+    {
+      "id": "act.sit",
+      "extensions": [
+        ".act"
+      ],
+      "section": "sit",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：176 值 / 176 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "act.overturn",
+      "extensions": [
+        ".act"
+      ],
+      "section": "overturn",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：134 值 / 133 解析 = 0.993（缺失 0、歧义 1）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "act.aniFile",
+      "extensions": [
+        ".act"
+      ],
+      "section": "ani file",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：8 值 / 8 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "mob.damage",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "damage",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：142 值 / 142 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "mob.stay",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "stay",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：71 值 / 71 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "mob.mountedAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "mounted action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：12 值 / 12 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "mob.movebackAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "moveback action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：74 值 / 74 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "mob.jumpAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "jump action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：101 值 / 101 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "mob.jumpMotion",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "jump motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：79 值 / 79 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "mob.dashAction",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "dash action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：59 值 / 59 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "mob.monsterTitle",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "monster title",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：90 值 / 80 解析 = 0.889（缺失 10、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 10 条缺失是 `../../../../../Act8/title_ani/*.ani` 这种逃出归档根的相对路径，86 无对应文件。"
+    },
+    {
+      "id": "aic.etcAction",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "etc action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：272 值 / 269 解析 = 0.989（缺失 3、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 3 条缺失（action/casting.act 不在 86）。"
+    },
+    {
+      "id": "aic.normalAI",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "normal",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：56 值 / 56 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "aic.expertAI",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "expert",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：56 值 / 56 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "aic.kingAI",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "king",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：56 值 / 56 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "aic.masterAI",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "master",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ai"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：56 值 / 56 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "aic.damageAction1",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "damage action 1",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：5 值 / 5 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "aic.damageAction2",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "damage action 2",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：5 值 / 5 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "aic.downAction",
+      "extensions": [
+        ".aic"
+      ],
+      "section": "down action",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".act"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：3 值 / 3 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "map.showDust",
+      "extensions": [
+        ".map"
+      ],
+      "section": "show dust",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：148 值 / 148 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "dgn.grid",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "grid",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：120 值 / 120 解析 = 1.000（缺失 0、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。"
+    },
+    {
+      "id": "dgn.enteringTitle",
+      "extensions": [
+        ".dgn"
+      ],
+      "section": "entering title",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：51 值 / 28 解析 = 0.549（缺失 23、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 23/51 缺失的 `Title/*.ani` 在 86 不存在；同名 .twn 段 twn.enteringTitle 实测 38/38=1.000，可见形状是对的、缺的是内容。"
+    },
+    {
+      "id": "obj.addObjectEffect",
+      "extensions": [
+        ".obj"
+      ],
+      "section": "add object effect",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #29 全归档实测：68 值 / 65 解析 = 0.956（缺失 3、歧义 0）。工单来源是一次真实 MOD 包的 VerifyPlan（30,342 文件报 332 条 missing-edge / 37 类），不是全归档缺口队列。 3 条缺失（如 Animation/DarkThunderBoltGlow1.ani）不在 86。"
+    },
+    {
+      "id": "etc.equipmentPartSet",
+      "extensions": [
+        ".etc"
+      ],
+      "section": "equipment part set",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".equ"
+        ],
+        "roots": [
+          "equipment"
+        ]
+      },
+      "note": "2026-10-17 任务 #30 实测：该段 2,415 条路径型值按 equipment/ 根解析 2,415/2,415 = 1.000，而归档根与 owner 两级都是 0 命中（值写作 character/partset/upperset.equ，实指 equipment/character/partset/upperset.equ）。#23 曾按『目标整体不在 86』留案，那个结论是解析阶梯缺档造成的，见 §13.18。"
+    },
+    {
+      "id": "etc.effectEquipmentPartSet",
+      "extensions": [
+        ".etc"
+      ],
+      "section": "effect equipment part set",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".equ"
+        ],
+        "roots": [
+          "equipment"
+        ]
+      },
+      "note": "2026-10-17 任务 #30 实测：70 条路径型值按 equipment/ 根 70/70 = 1.000，归档根与 owner 两级 0 命中。与 etc.equipmentPartSet 同一形态。"
+    },
+    {
+      "id": "key.particleFilename",
+      "extensions": [
+        ".key"
+      ],
+      "section": "particle filename",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ptl"
+        ],
+        "roots": [
+          "../"
+        ]
+      },
+      "note": "2026-10-17 任务 #30 实测：773 条值里 772 条按 owner 的父目录命中（roots 写作 ../），归档根与 owner 目录两级 0 命中。原因：.key 自己住在 …/角色名/key/ 里，而值 key/dummy.ptl 已经带上那一段目录，真正的基准是引用它的 .aic 所在目录，也就是 .key 的父目录。"
+    },
+    {
+      "id": "equ.appendage",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "appendage",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 1,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "apd"
+      },
+      "note": "2026-10-17 任务 #34。知识库 appendage-item-common-equipment-special-effect-fields 记 appendage.lst；全归档 6861 值 → 解析 6861（1.000）。apd 表只有 924 行、其中 1e4-1e5 档仅 37 行，值全落该档，不可能是撞号。父段 [then] 但实测无需限定。"
+    },
+    {
+      "id": "equ.myAppendage",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "my appendage",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 1,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "apd"
+      },
+      "note": "2026-10-17 任务 #34。知识库记 [if] 段内、同 appendage.lst；全归档 971 → 971（1.000）。"
+    },
+    {
+      "id": "equ.appendageUnique",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "appendage unique",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 1,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "apd"
+      },
+      "note": "2026-10-17 任务 #34。知识库同表；全归档仅 4 值 4 解析，随另两条附件边一起声明。"
+    },
+    {
+      "id": "equ.summonMonster",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "summon monster",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "怪物"
+      },
+      "note": "2026-10-17 任务 #34。知识库 equipment-effect-fields：3 列 = ID/等级/最大数量，col1 col2 不是引用。全归档 218 → 217（0.995）。"
+    },
+    {
+      "id": "equ.summonApc",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "summon apc",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "APC"
+      },
+      "note": "2026-10-17 任务 #34。知识库 equipment-runtime-trigger-fields：3 列 = ID/等级/数量（时长在同级 [duration]）。全归档 102 → 102（1.000）。"
+    },
+    {
+      "id": "stk.monsterSummons",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "monster summons",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 5,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "怪物"
+      },
+      "note": "2026-10-17 任务 #34。知识库 090302stackablesample.stk：5 列 = ID/最低等级/最高等级/持续 ms/最大召唤数。全归档 108 → 108（1.000）。"
+    },
+    {
+      "id": "stk.summonApc",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "summon apc",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 5,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "APC"
+      },
+      "note": "2026-10-17 任务 #34。知识库 stackablesample.stk：.stk 侧是 5 列（等级 -1 = 同自身），与 .equ 的 3 列形状不同，必须分两条边。全归档 239 → 239（1.000）。"
+    },
+    {
+      "id": "equ.emancipateInput",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "input",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "道具"
+      },
+      "note": "2026-10-17 任务 #34。知识库：[emancipate] 内 1/2/4 对 (材料ID,数量)，col1 是数量。全归档 16300 → 16300（1.000）。Under 限定 emancipate，避免与 [input] 在 AI 按键段的同名冲突。",
+      "under": [
+        "emancipate"
+      ]
+    },
+    {
+      "id": "equ.emancipateOutput",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "output",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "装备"
+      },
+      "note": "2026-10-17 任务 #34。知识库：突破产出 (装备ID,数量)。全归档 9918 → 9899（0.998）；同段按 width=1 试只得 0.499，宽度由此判定。",
+      "under": [
+        "emancipate"
+      ]
+    },
+    {
+      "id": "equ.needMaterial",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "need material",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "道具"
+      },
+      "note": "2026-10-17 任务 #34。知识库 equipment-basic-fields：非闭合块 (道具ID,数量)。全归档 8396 → 8383（0.998）。"
+    },
+    {
+      "id": "stk.needMaterial",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "need material",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "道具"
+      },
+      "note": "2026-10-17 任务 #34。知识库 dictionaries/stackable-fields 同形。全归档 5161 → 5001（0.969）。"
+    },
+    {
+      "id": "equ.consumeItem",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "consume item",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "道具"
+      },
+      "note": "2026-10-17 任务 #34。知识库 equipment-effect-fields：[then] 内 (道具ID,数量)。上一轮段级普查完全漏掉这一类。全归档 596 → 596（1.000）。"
+    },
+    {
+      "id": "stk.consumeItem",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "consume item",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "道具"
+      },
+      "note": "2026-10-17 任务 #34。知识库 090302stackablesample.stk：闭合块多行 (ID,数量)。全归档 12 → 12（1.000）。"
+    },
+    {
+      "id": "equ.requiredSkill",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "required skill",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 1,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "技能"
+      },
+      "note": "2026-10-17 任务 #34。知识库 equipmentsample.equ：单列技能 ID（-1/无 = 不需要）。全归档 1358 → 1358（1.000）；技能表只有 202 行且值域分散，非撞号。"
+    },
+    {
+      "id": "equ.creatureSpecies",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "creature species",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 1,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "宠物"
+      },
+      "note": "2026-10-17 任务 #34。知识库 creature-pet-fields：547/561 闭合块。全归档 756 → 715（0.946），缺失 41 与知识库记的 14 条未闭合记录同源。"
+    },
+    {
+      "id": "equ.outputIndex",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "output index",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 1,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "装备"
+      },
+      "note": "2026-10-17 任务 #34。知识库 creature-pet-boundary 明写宠物蛋产出的是 equipment.lst 的 ID，不是 creature.lst。全归档 306 → 291（0.951）。"
+    },
+    {
+      "id": "stk.monsterCardId",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "monster card id",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 1,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "道具"
+      },
+      "note": "2026-10-17 任务 #34。知识库无此段名（它说卡面与怪物 ID 在 [int data]），但 86 实测该段真实存在且形状干净：21436 → 21388（0.998）。以实测为准声明，段名标注未获知识库确认。"
+    },
+    {
+      "id": "stk.boosterEquipment",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "equipment",
+      "under": [
+        "booster info"
+      ],
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          1
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-17 任务 #34。知识库 stackablesample-booster.stk：首行是条目数，条目 = (ID,相对概率,数量)。首行把扁平流整体错位一格，所以 ID 在 col1：col0 实测 0.000、col1 0.984（3926 → 3865）。用并表 物品 而非 装备，与 config/annotations.json 的 booster 规则一致。"
+    },
+    {
+      "id": "stk.boosterStackable",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "stackable",
+      "under": [
+        "booster info"
+      ],
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          1
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-17 任务 #34。同首行错位机理。全归档 16344 → 16262（0.995）。"
+    },
+    {
+      "id": "stk.boosterAvatar",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "avatar",
+      "under": [
+        "booster info"
+      ],
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 5,
+        "refOffsets": [
+          1
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-17 任务 #34。知识库：条目 5 列 = (ID,概率,数量,期限,属性)。col0 实测 0.002、col1 0.969（642 → 622）。容器里 [avatar] 指装备时装而非道具，故必须走并表 物品。"
+    },
+    {
+      "id": "stk.boosterCera",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "cera",
+      "under": [
+        "booster info"
+      ],
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          1
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-17 任务 #34。知识库给形状 (ID,概率,数量) 但登记表未点明；col0 与 col1 在稠密并表上都是 0.99 级、不可分，按知识库形状取 col1（9016 → 8728，0.968）。"
+    },
+    {
+      "id": "stk.boosterEtc",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "etc",
+      "under": [
+        "booster info"
+      ],
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          1
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-17 任务 #34。知识库 stackable-container-package-fields：(ID,概率,数量)，登记表未记载；实测 108943 → 108566（0.997），取 col1 按知识库形状。与 config/annotations.json 里 .stk [etc] index 1 → 物品 的既有规则同口径。"
+    },
+    {
+      "id": "stk.boosterCreature",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "creature",
+      "under": [
+        "booster info"
+      ],
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 3,
+        "refOffsets": [
+          1
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-17 任务 #34。知识库把 [creature] 列为 booster 子块之一。首测按 宠物 表解析：390 值 0 命中；改并表 物品 后 382/390（0.979）⇒ 礼盒的 creature 子块装的是宠物蛋 .equ，不是 .cre。"
+    },
+    {
+      "id": "stk.packageDataSelection",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "package data selection",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-17 任务 #34。知识库 stackable-container-package-fields：候选 (ID,数量)；精确宽度未封死，本条为本轮新测，解析率待确认。"
+    },
+    {
+      "id": "equ.particle",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "particle",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ptl"
+        ]
+      },
+      "note": "2026-10-17 任务 #34。知识库 equipment-visual-fields：[particle] 是 (位置模式 token, .ptl 路径, 3 个含义未记载的整数) 交替，只取反引号路径；本条为本轮新测。"
+    },
+    {
+      "id": "equ.effectFileName",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "file name",
+      "under": [
+        "effect"
+      ],
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani",
+          ".ptl"
+        ]
+      },
+      "note": "2026-10-17 任务 #34。知识库 equipment-aura-data-fields：[effect] 内 [file name] 是单个 .ani/.ptl 路径，兄弟段 [type]/[attach pos]/[index]/[module] 是 token 列表。"
+    },
+    {
+      "id": "cre.overSkillMotion",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "over skill motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34：补完 ID 型边后，礼盒/宠物蛋种子的未声明路径缺口只剩这一类（例 `Animation/overskill.ani`），与兄弟段 [skill motion] 同形。"
+    },
+    {
+      "id": "equ.waitingMotion",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "waiting motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：328 值 / 303 解析 = 0.924；值形如 ../Common/Belt/Stay.ani，走 owner 相对一档即命中；25 条缺失在 7 个动作段里完全相同（同一批时装动画不在本归档），与 equ.attackMotion 的 0.939 同类。"
+    },
+    {
+      "id": "equ.moveMotion",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "move motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：326 值 / 301 解析 = 0.923；同上家族，值为 ../Common/Belt/Move.ani。"
+    },
+    {
+      "id": "equ.damageMotion1",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "damage motion 1",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：325 值 / 300 解析 = 0.923；同上家族。"
+    },
+    {
+      "id": "equ.damageMotion2",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "damage motion 2",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：322 值 / 297 解析 = 0.922；同上家族。"
+    },
+    {
+      "id": "equ.sitMotion",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "sit motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：299 值 / 274 解析 = 0.916；同上家族。"
+    },
+    {
+      "id": "equ.overturnMotion",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "overturn motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：294 值 / 269 解析 = 0.915；同上家族。"
+    },
+    {
+      "id": "equ.downMotion",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "down motion",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：289 值 / 264 解析 = 0.913；同上家族。"
+    },
+    {
+      "id": "cre.additionalAnimation",
+      "extensions": [
+        ".cre"
+      ],
+      "section": "additional animation",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：142 值 / 141 解析 = 0.993；值为 ../CommonAni/common_call_dodge.ani，一条同名歧义；宠物动作族此前只有 [over skill motion] 之外没覆盖到的段。"
+    },
+    {
+      "id": "stk.chnRandomImagePercent",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "chn random image percent",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-17 任务 #34 装备族路径型缺口实测：176 值 / 176 解析 = 1.000；值为 Common/CommonEffect/Animation/…/00_normal.ani，全部命中，是随机外观动画。"
+    },
+    {
+      "id": "equ.partSetIndex",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "part set index",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "section-table",
+        "roots": [
+          "equipment"
+        ],
+        "table": {
+          "path": "etc/equipmentpartset.etc",
+          "section": "equipment part set",
+          "keyOffset": 0,
+          "valueOffset": 1
+        }
+      },
+      "note": "2026-10-17 任务 #37。套装编号 → etc/equipmentpartset.etc 同名块的第二列（块形如 `编号 / 套装 .equ / 套装名` + 若干 4 列部件行）。86 全档实测 84,541 值 → 84,523 解析 = 1.000，18 缺失。表文件本身不跟随：跟进去等于把 2,415 个套装全拉进包，而一件装备只属于一套。"
+    },
+    {
+      "id": "equ.effectPartSetIndex",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "effect part set index",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "section-table",
+        "roots": [
+          "equipment"
+        ],
+        "table": {
+          "path": "etc/equipmenteffectset.etc",
+          "section": "effect equipment part set",
+          "keyOffset": 0,
+          "valueOffset": 1
+        }
+      },
+      "note": "2026-10-17 任务 #37。效果套装编号 → etc/equipmenteffectset.etc 的 [effect equipment part set] 块第二列（块形如 `编号 / .equ / 8 个部位 token`）。86 全档实测 2,629 值 → 2,613 解析 = 0.994。同样不跟随表文件。"
+    },
+    {
+      "id": "equ.referenceEffectPartSetIndex",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "reference effect part set index",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "section-table",
+        "roots": [
+          "equipment"
+        ],
+        "table": {
+          "path": "etc/equipmenteffectset.etc",
+          "section": "effect equipment part set",
+          "keyOffset": 0,
+          "valueOffset": 1
+        }
+      },
+      "note": "2026-10-17 任务 #37。知识库说 [reference effect part set index] 与 [effect part set index] 同表同形；86 全档实测 994 值 → 978 解析 = 0.984。"
+    },
+    {
+      "id": "map.igaAnimation",
+      "extensions": [
+        ".map"
+      ],
+      "section": "IGA animation",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".ani"
+        ]
+      },
+      "note": "2026-10-18 任务 #40 由判据 1 抓到：全档 16 值 → 16 解析 = **1.000**，0 缺失（值形如 `Animation/IGA_silver.ani`，owner-relative 直接命中 `map/town/silvercrown/animation/iga_silver.ani`）。**留案纠正**：#38 当时把它写成「归档里两种大小写都不存在、属悬空引用」，那是错的——我当时用 `Archive.Find` 拿引用值当全路径去查，而它本该按引用方目录相对解析。这条只有 16 个值，在全档缺口队列里排不进 top，是「以包体判据 1 为工单」而不是「以出现次数为工单」才抓到的（同 §13.18 的换轨理由）。"
+    },
+    {
+      "id": "etc.igaListImage",
+      "extensions": [
+        ".etc"
+      ],
+      "section": "igalist",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-18 任务 #40 全档实测 18 值 → 18 命中 `.img` 形态 = **1.000**（例 `Sprite/Interface/Iga/Iga01/IGA_silver.img`）。按 item.icon / wdm.mapImage 同口径记为客户端资产、记录不跟随：`.img` 属于 NPK 容器，归属由 `(6)资源与NPK对照.txt` 负责，跟着走只会在归档里撞同名歧义。"
+    },
+    {
+      "id": "wdm.dungeon",
+      "extensions": [
+        ".wdm"
+      ],
+      "section": "dungeon",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "地下城"
+      },
+      "note": "2026-10-18 任务 #39。知识库 worldmap-dungeon-interface-layout-fields：`[dungeon]` 是页面关联的副本集合，按 dungeon.lst 解析；同一句还明写「块内可能混有附加列或版本扩展，不能把所有数字都当 dungeon ID」。86 全档实测按 2 切列：col0 268 值 → 257 解析 = 0.959（缺失例 \"18\"，即世界地图列出的副本 ID 不在本档 dungeon.lst，属版本门控）；col1 只剩 12 个值 → 1 解析 = 0.083，因为第二列在 86 里绝大多数是 `-1`，而 `-1` 走 DefaultNoneValues 记 unknown、不进解析数 ⇒ 该列不是引用列。实测样例 lorien.wdm = `1 -1 2 -1 1500 -1 1501 -1`。`[dungeon]` 里可以嵌 `[in progress]` 子块（powerstation.wdm），其数值属另一个段、本边不碰——知识库把 `[in progress]` 标为「需验证」且明令不得与普通副本列表合并抽数，夹具 TestWorldmapEdgesFollowDeclaredColumns 钉住了 999 不得跟进。"
+    },
+    {
+      "id": "wdm.uiPath",
+      "extensions": [
+        ".wdm"
+      ],
+      "section": "ui path",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry",
+        "expectExt": [
+          ".xui",
+          ".ui"
+        ]
+      },
+      "note": "2026-10-18 任务 #39。知识库同词典：`.wdm -> [ui path] -> worldmap/ui/*.ui`，且「`.wdm` 和 `.ui` 是同一页面的两个配置层，必须双向核对」；边界是「路径存在不证明控件可点」。86 实测 52 值 → 51 解析 = 0.981，缺失例 `WorldMap/UI/TerritoryCombat.xui`（86 里确实没有这个文件）。`.xui` 是 type 3 二进制、无文本形态，导出器按 raw 落盘（§13.9 既有口径）。"
+    },
+    {
+      "id": "wdm.mapImage",
+      "extensions": [
+        ".wdm"
+      ],
+      "section": "map image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-18 任务 #39。知识库：worldmap 页面图案/地图图像引用，边界「PVF 中写有路径不证明客户端资源存在、帧号有效或显示正常」。86 实测 53 值全指向 `.img`（形如 `WorldMap/Lorien.img` + 帧号 0），按 entry 解必撞同名歧义 ⇒ 按 item.icon / dgn.worldmapInfoAsset 口径记为客户端资产、记录不跟随，归属 NPK 由资产对照表负责。"
+    },
+    {
+      "id": "wdm.additionalImage",
+      "extensions": [
+        ".wdm"
+      ],
+      "section": "additional image",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-18 任务 #39。同段另有 6 个数值型候选，取值与图像无关，未声明。86 实测路径值 18 → 18 全为 `.img`（例 `WorldMap/Guild/GuildDungeonMapCover.img`），按 wdm.mapImage 同口径记资产。"
+    },
+    {
+      "id": "wdm.hellFreepassItem",
+      "extensions": [
+        ".wdm"
+      ],
+      "section": "hell freepass item",
+      "tokenTypes": [
+        0
+      ],
+      "record": {
+        "width": 2,
+        "refOffsets": [
+          0
+        ]
+      },
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-18 任务 #39。知识库 formal-region-town-worldmap-area-entry-fields：`[hell freepass item]` = 深渊/特殊入口**门票物品**线索（边界「门票扣除和入场成功不能由静态证明」）。86 实测 593 值 → 593 解析 = 1.000，形状是 (`物品ID`, 数量) 对（powerstation.wdm = `490003092 1 490003314 1 …`）。**对照列 col1 也 593/593 = 1.000**——数量列全是 1，而 物品 并表里真存在 ID 1，属 §16.2 记过的假高分；取 col0 的依据是知识库的语义而不是分数。"
+    },
+    {
+      "id": "wdm.itemCondition",
+      "extensions": [
+        ".wdm"
+      ],
+      "section": "item condition",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-18 任务 #39。知识库：入场**物品**条件线索（数量/扣除/服务端校验需实机验证）。86 实测 17 值 → 17 解析 = 1.000，段内每行一个 ID、无配对列，故不声明宽度。"
+    },
+    {
+      "id": "wdm.ancientFreepassItem",
+      "extensions": [
+        ".wdm"
+      ],
+      "section": "ancient freepass item",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-18 任务 #39。与 `[hell freepass item]` 同族的门票物品线索（ ancient / 风险副本变体）。86 实测 8 值 → 8 解析 = 1.000；同段形态的 risk 变体另立一边，实测 10 → 10 = 1.000。"
+    },
+    {
+      "id": "wdm.riskAncientFreepassItem",
+      "extensions": [
+        ".wdm"
+      ],
+      "section": "risk ancient freepass item",
+      "tokenTypes": [
+        0
+      ],
+      "target": {
+        "kind": "registry",
+        "relation": "物品"
+      },
+      "note": "2026-10-18 任务 #39。86 实测 10 值 → 10 解析 = 1.000，按 物品 解析，语义同 ancient freepass item。"
+    },
+    {
+      "id": "ani.imagePath",
+      "extensions": [
+        ".ani"
+      ],
+      "section": "image path",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-18 任务 #42，110 版（paged110）实测；同一份目录在 86 上这类 0 值（86 的 `.ani` 用 `[IMAGE]`，已由 ani.frameImage 覆盖），所以本边只作用于 110，对 86 逐位无影响。 110 全档 2,689,107 值 → 记资产 2,564,719、动态模板 124,388。判成资产而不是依赖的证据：同一 section 改用 entry 口径探针实测 2,689,040 值 → 解析 0、未知 2,689,040（其中其他 2,564,652），即这些 `../Sprite/Contents/…` 值在归档里没有对应条目，属 NPK 侧资源。"
+    },
+    {
+      "id": "etc.imgAsset",
+      "extensions": [
+        ".etc"
+      ],
+      "section": "img",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-18 任务 #42，110 版（paged110）实测；同一份目录在 86 上这类 0 值（86 的 `.ani` 用 `[IMAGE]`，已由 ani.frameImage 覆盖），所以本边只作用于 110，对 86 逐位无影响。 110 全档 340,057 值。entry 口径探针同样 0 解析（未知 340,057）⇒ 资产。例 `Character/Archer/Effect/Changeling/Vigil…img`。"
+    },
+    {
+      "id": "stk.iconMarks",
+      "extensions": [
+        ".stk"
+      ],
+      "section": "icon marks",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-18 任务 #42，110 版（paged110）实测；同一份目录在 86 上这类 0 值（86 的 `.ani` 用 `[IMAGE]`，已由 ani.frameImage 覆盖），所以本边只作用于 110，对 86 逐位无影响。 110 全档 76,124 值；entry 口径 0 解析 ⇒ 资产（例 `Contents/2021/CharacterGrowth/IconMark.img`）。86 的同类语义由 stk.iconMark / equ.iconMark 覆盖。"
+    },
+    {
+      "id": "equ.iconMarksAsset",
+      "extensions": [
+        ".equ"
+      ],
+      "section": "icon marks",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "asset"
+      },
+      "note": "2026-10-18 任务 #42，110 版（paged110）实测；同一份目录在 86 上这类 0 值（86 的 `.ani` 用 `[IMAGE]`，已由 ani.frameImage 覆盖），所以本边只作用于 110，对 86 逐位无影响。 110 全档 36,660 值；entry 口径 0 解析 ⇒ 资产（例 `Item/IconMark.img`）。"
+    },
+    {
+      "id": "act.animationFile",
+      "extensions": [
+        ".act"
+      ],
+      "section": "animation file",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry"
+      },
+      "note": "2026-10-18 任务 #42，110 版（paged110）实测；同一份目录在 86 上这类 0 值（86 的 `.ani` 用 `[IMAGE]`，已由 ani.frameImage 覆盖），所以本边只作用于 110，对 86 逐位无影响。 这条必须是 entry 不是 asset：110 全档 151,042 值 → 解析 134,573 = 0.891、缺失 16,469。缺失例全是 `.../../../../../../../../../../Contents/2022/StolenLandIspins/…` 这种 `../` 链长出归档根的写法（同 §13.20：夹掉 `../` 收益为 0，不新增解析档）。0.891 略低于 0.90 阈值仍保留，依据是缺失侧成因已测清；若按 asset 口径声明，会把 13 万条真依赖一律记成已解析资产——那是 §13.13 抓过的假成功形态。"
+    },
+    {
+      "id": "mob.allDifficulty",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "all difficulty",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry"
+      },
+      "note": "2026-10-18 任务 #42，110 版（paged110）实测；同一份目录在 86 上这类 0 值（86 的 `.ani` 用 `[IMAGE]`，已由 ani.frameImage 覆盖），所以本边只作用于 110，对 86 逐位无影响。 110 全档 43,993 值 → 解析 41,350 = 0.940、缺失 2,283、同名歧义 360（缺失例 `../../../../../../../../../Monster/KContents2/TheOculusHard/Boss/Luise2/…` 属长出归档根）。"
+    },
+    {
+      "id": "mob.attackInfoEx",
+      "extensions": [
+        ".mob"
+      ],
+      "section": "attack info ex",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry"
+      },
+      "note": "2026-10-18 任务 #42，110 版（paged110）实测；同一份目录在 86 上这类 0 值（86 的 `.ani` 用 `[IMAGE]`，已由 ani.frameImage 覆盖），所以本边只作用于 110，对 86 逐位无影响。 110 全档 37,633 值 → 解析 37,018 = 0.984、缺失 545、同名歧义 70（未知例 `Agnes.ai` 是同名 `.ai` 多目标）。"
+    },
+    {
+      "id": "act.changeActionFile",
+      "extensions": [
+        ".act"
+      ],
+      "section": "change action file",
+      "tokenTypes": [
+        6
+      ],
+      "target": {
+        "kind": "entry"
+      },
+      "note": "2026-10-18 任务 #42，110 版（paged110）实测；同一份目录在 86 上这类 0 值（86 的 `.ani` 用 `[IMAGE]`，已由 ani.frameImage 覆盖），所以本边只作用于 110，对 86 逐位无影响。 110 全档 14,719 值 → 解析 14,041 = 0.954、缺失 596、同名歧义 82。"
+    }
+  ]
+}

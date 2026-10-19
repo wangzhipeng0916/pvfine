@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "description": "提取预设 = 起始节点集 + 默认类别 + 一句话说明（设计文档 E8 口径）。它不引入新的遍历语义：闭包与勾选择一直由边目录和类别决定，预设只把『这类内容通常要带什么』写成数据。类别为空表示全部类别。",
+  "presets": [
+    {
+      "id": "dungeon",
+      "name": "副本",
+      "description": "一个副本牵连的地图、怪物与 AI、机关与特效、动画与贴图，以及掉落的物品。实测 grakkarak 252 个条目（.ani 184 / .obj 20 / .atk 16 / .til 8 / .mob 7 / .ai 4 / .ptl 4 / .stk 4），整包 262 个文件 / 0.37 MB；小副本 37 个也正常。",
+      "seedHint": "dungeon/act1/grakkarak.dgn，或 地下城:7（86 的 dungeon.lst）；副本接口:ID 解析到的是 .wdm 世界地图，目前只能带出它自己",
+      "categories": []
+    },
+    {
+      "id": "equipment",
+      "name": "装备",
+      "description": "一件装备牵连的附件(.apd)、特效与动画、宠物链、套装 .equ、召唤的怪物/APC 与突破材料；图片要落在 NPK 里，产物带资源对照表。实测 43 件抽样装备的闭包多在 1~6 个条目（普通下装 2 个、光环装扮 5 个：.ani 4 / .equ 1），能牵出 .apd 与怪物链的是少数——闭包小是正常的。",
+      "seedHint": "equipment/character/.../x.equ，或 装备:46700（光环装扮，实测 5 个条目、覆盖率 1.000；纯 ID 常撞表，建议带关系名）",
+      "categories": ["item", "attach", "act", "ani", "obj", "mob"]
+    },
+    {
+      "id": "item",
+      "name": "道具",
+      "description": "单个消耗品/材料：多数只有图标与自身文本，闭包小是正常的（实测 gold.stk 1 个条目、avatar_optionchange1.stk 2 个）；文字表占位符引用的行由依赖补齐负责。",
+      "seedHint": "stackable/gold.stk，或 道具:2660452",
+      "categories": ["item", "ani", "obj"]
+    },
+    {
+      "id": "giftbox",
+      "name": "礼包",
+      "description": "按 [stackable type] 分支展开内容物，套娃由闭包自然递归；实测一个节日礼包 46 个条目（.ani 30 / .equ 10 / .cre 5 / .stk 1）。",
+      "seedHint": "stackable/cash/christmas_inboostersm.stk，或 道具:86",
+      "categories": ["item", "attach", "ani"]
+    },
+    {
+      "id": "town",
+      "name": "城镇",
+      "description": "一个城镇牵连的地图(.map)、地面贴图(.til)、背景与入场动画(.ani)、场景物件(.obj)与过场图。实测银冠城 64 个条目（.ani 49 / .til 8 / .map 4 / .obj 2 / .twn 1），386 条引用里 5 条是归档自己的悬空引用（`Tile/dummy.til` ×4 与 `Animation/ghost2.ani`，两种大小写与裸文件名兜底都查不到）。#40 复核时另发现一条本可解析却没声明的引用（`[IGA animation]`，全档 16 值 1.000），已补成 `map.igaAnimation`——在此之前它被误记成悬空。",
+      "seedHint": "town/silvercrown.twn，或 城镇:1（86 的城镇表 35 行，ID 到 112）；NPC 只能带出 2 个条目，不单立预设",
+      "categories": ["scene", "ani", "obj"]
+    },
+    {
+      "id": "combat",
+      "name": "战斗单位（怪物/宠物）",
+      "description": "一个战斗单位牵连的动作与动画、攻击判定(.atk/.act)、AI 脚本、被动对象与特效(.obj/.ptl)与掉落物。实测普通怪物 13 个条目（.ani 8 / .stk 3 / .atk 1）、宠物 11 个；Boss 级怪物 540 个（.ani 243 / .act 183 / .ai 37 / .obj 29 / .atk 25 / .ptl 15）——规模差 40 倍是正常的，不是抓多了。",
+      "seedHint": "怪物:1 = monster/goblin/goblin.mob，宠物:1 = creature/faras/faras.cre（86 的怪物表 5065 行、宠物表 486 行；ID 不连续，纯号可能撞表）",
+      "categories": ["mob", "attach", "act", "ani", "obj", "item"]
+    },
+    {
+      "id": "aic",
+      "name": "AI 角色",
+      "description": "一个 AI 角色(.aic，如 G.S.D)牵连的 AI 脚本(.ai)与文字键流(.key)。实测 gsd.aic 18 个条目（.key 10 / .ai 7），但引用覆盖率只有 0.436：它还按名字引用技能与对话，那一类引用尚未声明，所以产物可能不完整。",
+      "seedHint": "APC:201 = aicharacter/swordman/gsd/gsd.aic（86 的 APC 表 1021 行；这张表不在 config/lists.json 里，由服务层补入）",
+      "categories": ["mob"]
+    },
+    {
+      "id": "worldmap",
+      "name": "选关地图（世界地图）",
+      "description": "一个世界地图页面牵连它列出的全部副本，以及每个副本自己的地图、怪物、机关与动画——这是预设里最大的一族。实测洛兰页 3,052 个条目、整包 3,064 个文件 / 4.07 MB（闭包 0.1 s），driftcave 页 10,656 个条目 / 1.4 s；只要一个副本请改用「副本」预设（实测 252 个条目）。`.dgn` 不会反向走进 `.wdm`，所以副本预设不受影响。",
+      "seedHint": "副本接口:1 = worldmap/lorien.wdm（86 的 worldmap.lst 47 行）；门票与物品条件已随包带出，`[hell quest]`(0.294) 与 `[in progress]`(需验证) 未声明，条件类内容不在包里",
+      "categories": []
+    }
+  ]
+}

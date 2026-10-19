@@ -60,7 +60,12 @@ func ParseScriptView(text string) ScriptView {
 // ParseScriptViewWithNestedSections preserves an unpaired parent while parsing
 // paired child sections explicitly declared by the active rendering rules.
 func ParseScriptViewWithNestedSections(text string, isNested func(parent, child string) bool) ScriptView {
-	lexemes := lexScriptText(text)
+	return ScriptView{Text: text, Elements: elementsFromLexemes(lexScriptText(text), isNested)}
+}
+
+// elementsFromLexemes runs the section-stack algorithm shared by the text
+// parser and the token-stream parser, so both project the same semantics.
+func elementsFromLexemes(lexemes []scriptLexeme, isNested func(parent, child string) bool) []ScriptElement {
 	pairedNames := make(map[string]bool)
 	for _, lexeme := range lexemes {
 		if lexeme.isSection && lexeme.closing {
@@ -139,7 +144,7 @@ func ParseScriptViewWithNestedSections(text string, isNested func(parent, child 
 		elements = append(elements, element)
 	}
 
-	return ScriptView{Text: text, Elements: elements}
+	return elements
 }
 
 func lexScriptText(text string) []scriptLexeme {
