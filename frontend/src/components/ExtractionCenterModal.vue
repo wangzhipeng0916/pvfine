@@ -93,7 +93,7 @@ const stateType = (name: string): "success" | "warning" | "error" | "default" =>
           size="small"
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 3 }"
-          placeholder="追加种子，每行一个：条目路径，或 关系名:ID（如 怪物:10021）"
+          placeholder="追加种子，每行一个：条目路径、关系名:ID（如 怪物:10021），或粘贴 lst 片段行（ID 与路径之间是制表符）"
           :disabled="extraction.running"
           @keydown.enter.prevent="extraction.acceptExtraSeeds()"
         />
@@ -104,8 +104,19 @@ const stateType = (name: string): "success" | "warning" | "error" | "default" =>
         >
           加入
         </NButton>
+        <NSelect
+          v-model:value="extraction.listRelation"
+          size="small"
+          class="extraction-relation"
+          clearable
+          filterable
+          placeholder="清单所属表（可选）：粘贴纯 ID 列表时按它解析"
+          :options="extraction.relationOptions"
+          :disabled="extraction.running || extraction.relationOptions.length === 0"
+        />
         <NText depth="3" class="extraction-extra-hint">
-          纯 ID 只在归属唯一时才认；86 实测抽样 660 个 ID 里 84.7% 被多张表同时认领，写错会直接报候选关系。
+          片段行按"从左往右第一个能命中的列"取路径，不必切成两列；路径列在这份归档里找不到就报错，不会退回按同一行的数字猜文件。
+          纯 ID 没选表时只在归属唯一时才认；86 实测抽样 660 个 ID 里 84.7% 被多张表同时认领，写错会直接报候选关系。
         </NText>
       </div>
 
@@ -326,6 +337,9 @@ const stateType = (name: string): "success" | "warning" | "error" | "default" =>
   width: 100%;
   font-size: 12px;
   line-height: 1.5;
+}
+.extraction-relation {
+  width: 100%;
 }
 .extraction-extra :deep(.n-input) {
   flex: 1;

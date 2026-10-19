@@ -66,7 +66,7 @@ func main() {
 	var seeds seedsFlag
 	archivePath := flag.String("pvf", os.Getenv("PVF_TESTFILE"), "Script.pvf 路径，默认取 PVF_TESTFILE")
 	out := flag.String("out", "", "导出目录（必填）")
-	flag.Var(&seeds, "seed", "种子：归档内条目路径、关系名:ID 或纯 ID，可重复")
+	flag.Var(&seeds, "seed", "种子：归档内条目路径、关系名:ID、纯 ID，或 lst 片段行（ID<TAB>路径），可重复")
 	catalogPath := flag.String("catalog", "", "自定义边目录；缺省用内置")
 	maxEntries := flag.Int("max", 0, "闭包条目上限，0 为不限")
 	layout := flag.String("layout", "mirror", "导出布局：mirror | category | seed")

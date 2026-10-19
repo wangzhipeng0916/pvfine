@@ -80,6 +80,10 @@ type ExtractionPreset struct {
 // frontend never re-derives classification or completion itself.
 type ExtractionRequest struct {
 	Seeds []string `json:"seeds"`
+	// ListRelation names the registry a pasted id list belongs to. It only
+	// applies to bare numeric seeds: with a declared table there is nothing to
+	// guess, so those resolve through it instead of the ambiguity guard.
+	ListRelation string `json:"listRelation,omitempty"`
 	// Preset applies the shipped preset's default categories when the caller left
 	// categories empty. It never narrows the closure.
 	Preset     string   `json:"preset,omitempty"`
@@ -238,6 +242,57 @@ func (s *ExtractionService) Categories() ([]ExtractionCategory, error) {
 	return out, nil
 }
 
+// summarizeSeedFailures keeps the all-failed error bounded while still naming
+// what went wrong: a pasted list can be thousands of lines, and the message has
+// to stay readable in the panel.
+func summarizeSeedFailures(warnings []string) string {
+	const shown = 3
+	head := warnings
+	if len(head) > shown {
+		head = head[:shown]
+	}
+	message := strings.Join(head, "；")
+	if len(warnings) > shown {
+		message += fmt.Sprintf("；…共 %d 条解析失败", len(warnings))
+	}
+	return message
+}
+
+// ExtractionRelation is one registry the panel can declare as the table a
+// pasted id list belongs to.
+type ExtractionRelation struct {
+	Name     string `json:"name"`
+	Rows     int    `json:"rows"`
+	ListPath string `json:"listPath,omitempty"`
+}
+
+// Relations lists the declared registries with the row count this archive
+// actually has, so the panel can say "装备 119,532 行" instead of asking the user
+// to remember the exact table name. A table whose list file is absent from the
+// archive reports -1 rows rather than 0, because "0 行" and "这张表在这份归档里
+// 不存在" must not look the same.
+func (s *ExtractionService) Relations() ([]ExtractionRelation, error) {
+	archive, generation, rules := s.currentArchive()
+	if archive == nil {
+		return nil, ErrNoArchive
+	}
+	scanner, err := s.scannerFor(archive, generation, rules)
+	if err != nil {
+		return nil, err
+	}
+	registers := scanner.RegistrySet()
+	names := registers.Relations()
+	out := make([]ExtractionRelation, 0, len(names))
+	for _, name := range names {
+		relation := ExtractionRelation{Name: name, Rows: registers.Rows(name)}
+		if listPath, err := registers.ListPath(name); err == nil {
+			relation.ListPath = listPath
+		}
+		out = append(out, relation)
+	}
+	return out, nil
+}
+
 // Prepare computes the closure, classifies it and applies the selection. The
 // result is cached under an id so Execute does not recompute anything.
 func (s *ExtractionService) Prepare(request ExtractionRequest) (*ExtractionPreview, error) {
@@ -271,7 +326,7 @@ func (s *ExtractionService) Prepare(request ExtractionRequest) (*ExtractionPrevi
 	indexes := make([]int32, 0, len(request.Seeds))
 	warnings := []string{}
 	for _, seed := range request.Seeds {
-		hit, err := extraction.ResolveSeed(archive, scanner.RegistrySet(), seed)
+		hit, err := extraction.ResolveSeedIn(archive, scanner.RegistrySet(), seed, request.ListRelation)
 		if err != nil {
 			warnings = append(warnings, "种子无法解析："+err.Error())
 			continue
@@ -279,7 +334,9 @@ func (s *ExtractionService) Prepare(request ExtractionRequest) (*ExtractionPrevi
 		indexes = append(indexes, hit.Index)
 	}
 	if len(indexes) == 0 {
-		return nil, fmt.Errorf("没有可用的种子")
+		// 一条都没解析出来时要把原因带上：贴了一整张清单却全错（比如表选错了）
+		// 的时候，"没有可用的种子"本身没有告诉用户哪里错了。
+		return nil, fmt.Errorf("没有可用的种子：%s", summarizeSeedFailures(warnings))
 	}
 	closure, err := scanner.Closure(indexes, extraction.Options{
 		MaxEntries: request.MaxEntries, CollectUnmodeled: true,

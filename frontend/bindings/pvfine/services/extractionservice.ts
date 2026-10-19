@@ -64,6 +64,17 @@ export function Presets(): $CancellablePromise<$models.ExtractionPreset[] | null
 }
 
 /**
+ * Relations lists the declared registries with the row count this archive
+ * actually has, so the panel can say "装备 119,532 行" instead of asking the user
+ * to remember the exact table name. A table whose list file is absent from the
+ * archive reports -1 rows rather than 0, because "0 行" and "这张表在这份归档里
+ * 不存在" must not look the same.
+ */
+export function Relations(): $CancellablePromise<$models.ExtractionRelation[] | null> {
+    return $Call.ByID(1699920769);
+}
+
+/**
  * Release drops a cached preview.
  */
 export function Release(id: string): $CancellablePromise<void> {

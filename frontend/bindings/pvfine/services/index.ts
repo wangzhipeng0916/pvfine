@@ -95,6 +95,7 @@ export type {
     ExtractionCategoryPreview,
     ExtractionPreset,
     ExtractionPreview,
+    ExtractionRelation,
     ExtractionRequest,
     ExtractionResult,
     FileMeta,

@@ -514,3 +514,83 @@ func TestExtractionPresetsApplyDefaultsButNeverNarrowClosure(t *testing.T) {
 		t.Errorf("只勾 item 时主集该比全类别小: %d vs %d", explicit.MainCount, plain.MainCount)
 	}
 }
+
+// TestExtractionServiceAcceptsListSeeds pins the two list entry points: rows
+// pasted the way a .lst reads resolve by their path column, and a list of bare
+// ids resolves through the table the caller declared. Both must land on the same
+// closure the equivalent path seed produces, otherwise "按清单提取" would be a
+// second, subtly different traversal.
+func TestExtractionServiceAcceptsListSeeds(t *testing.T) {
+	_, svc := extractionFixture(t)
+	fromPath, err := svc.Prepare(ExtractionRequest{Seeds: []string{"equipment/equ/w.equ"}})
+	if err != nil {
+		t.Fatalf("Prepare(path): %v", err)
+	}
+	fromRow, err := svc.Prepare(ExtractionRequest{Seeds: []string{"7\tequipment/equ/w.equ"}})
+	if err != nil {
+		t.Fatalf("Prepare(清单行): %v", err)
+	}
+	fromList, err := svc.Prepare(ExtractionRequest{Seeds: []string{"7"}, ListRelation: "装备"})
+	if err != nil {
+		t.Fatalf("Prepare(声明表+纯 ID): %v", err)
+	}
+	for name, got := range map[string]*ExtractionPreview{"清单行": fromRow, "声明表": fromList} {
+		if got.ClosureCount != fromPath.ClosureCount || got.ExportedCount != fromPath.ExportedCount {
+			t.Errorf("%s 与路径种子应给出同一份闭包: %d/%d vs %d/%d", name,
+				got.ClosureCount, got.ExportedCount, fromPath.ClosureCount, fromPath.ExportedCount)
+		}
+	}
+	if len(fromList.Warnings) != 0 {
+		for _, warning := range fromList.Warnings {
+			// NPK 索引之类与种子无关的提示会照常出现，这里只看种子本身。
+			if strings.Contains(warning, "种子无法解析") {
+				t.Errorf("可解析的种子不该有警告: %v", fromList.Warnings)
+			}
+		}
+	}
+
+	// 表选错时错误必须说清是什么问题：贴一整张清单的时候，"没有可用的种子"
+	// 只会让用户以为是格式问题。
+	_, err = svc.Prepare(ExtractionRequest{Seeds: []string{"7"}, ListRelation: "装备表"})
+	if err == nil {
+		t.Fatal("未知的清单所属表必须报错")
+	}
+	if !strings.Contains(err.Error(), "未知的清单所属表") {
+		t.Errorf("错误要指出表名不对, got %v", err)
+	}
+}
+
+// TestExtractionServiceListsRelations feeds the panel's 「清单所属表」 dropdown:
+// names with the row count this archive actually has, and the list file each one
+// reads, so the choice is made on facts rather than on a remembered table name.
+func TestExtractionServiceListsRelations(t *testing.T) {
+	_, svc := extractionFixture(t)
+	relations, err := svc.Relations()
+	if err != nil {
+		t.Fatalf("Relations: %v", err)
+	}
+	byName := map[string]ExtractionRelation{}
+	for _, relation := range relations {
+		byName[relation.Name] = relation
+	}
+	equipment, ok := byName["装备"]
+	if !ok {
+		t.Fatalf("关系列表里没有装备：%v", relations)
+	}
+	if equipment.Rows != 1 || equipment.ListPath != "equipment/equipment.lst" {
+		t.Errorf("装备 = %+v，期望 1 行 / equipment/equipment.lst", equipment)
+	}
+	// 表在这份归档里不存在时要如实报 -1，不能和"0 行"混在一起。
+	found := false
+	for _, relation := range relations {
+		if relation.Name == "任务" {
+			found = true
+			if relation.Rows != -1 {
+				t.Errorf("归档里没有的登记表应报 -1，got %+v", relation)
+			}
+		}
+	}
+	if !found {
+		t.Error("关系列表应包含全部已声明的登记表")
+	}
+}

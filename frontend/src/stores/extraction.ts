@@ -2,7 +2,12 @@ import { computed, ref, watch } from "vue";
 import { defineStore } from "pinia";
 import { Events } from "@wailsio/runtime";
 import { ExtractionService } from "../../bindings/pvfine/services";
-import type { ExtractionPreview, ExtractionPreset, ExtractionRequest } from "../../bindings/pvfine/services/models";
+import type {
+  ExtractionPreview,
+  ExtractionPreset,
+  ExtractionRelation,
+  ExtractionRequest,
+} from "../../bindings/pvfine/services/models";
 
 export const extractionLayoutOptions = [
   { label: "原路径镜像", value: "mirror" },
@@ -49,12 +54,19 @@ export function stateTotal(preview: ExtractionPreview | null): number {
   );
 }
 
-/** 手输种子按行/逗号/分号拆开；每段可以是条目路径、`关系名:ID` 或纯 ID。 */
+/** 手输种子按行/逗号/分号拆开；每段可以是条目路径、`关系名:ID`、纯 ID，或 lst 片段行。 */
 export function parseExtraSeeds(text: string): string[] {
   return text
     .split(/[\n\r,;]+/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+/** 下拉里一行说明：表名加这份归档的实际行数，选之前就知道规模。 */
+export function relationLabel(relation: ExtractionRelation): string {
+  const rows = relation.rows ?? -1;
+  if (rows < 0) return `${relation.name}（这份归档里没有这张表）`;
+  return `${relation.name} · ${rows} 行`;
 }
 
 export const useExtractionStore = defineStore("extraction", () => {
@@ -75,6 +87,13 @@ export const useExtractionStore = defineStore("extraction", () => {
   const presets = ref<ExtractionPreset[]>([]);
   const preset = ref("");
   const activePreset = computed(() => presets.value.find((item) => item.id === preset.value) ?? null);
+  // 「清单所属表」：贴进来的纯 ID 列表属于哪张登记表。选中后纯数字行按它解析，
+  // 不选时纯 ID 仍只认唯一归属（86 实测抽样里 84.7% 的 ID 被多张表同时认领）。
+  const relations = ref<ExtractionRelation[]>([]);
+  const listRelation = ref("");
+  const relationOptions = computed(() =>
+    relations.value.map((item) => ({ label: relationLabel(item), value: item.name })),
+  );
   const maxEntries = ref(0);
   const preview = ref<ExtractionPreview | null>(null);
   const preparing = ref(false);
@@ -116,6 +135,7 @@ export const useExtractionStore = defineStore("extraction", () => {
     if (lstSuggest.value) request.lstSuggest = true;
     if (copyAssets.value) request.copyAssets = true;
     if (preset.value) request.preset = preset.value;
+    if (listRelation.value) request.listRelation = listRelation.value;
     if (maxEntries.value > 0) request.maxEntries = maxEntries.value;
     return request;
   }
@@ -182,8 +202,11 @@ export const useExtractionStore = defineStore("extraction", () => {
     lstSuggest.value = false;
     copyAssets.value = false;
     preset.value = "";
+    listRelation.value = "";
     maxEntries.value = 0;
     void loadPresets();
+    // 表清单跟着归档走（每份归档有哪些表、各多少行都不同），所以每次打开都取一遍。
+    void loadRelations();
     title.value = label;
     error.value = "";
     hint.value = "";
@@ -280,6 +303,15 @@ export const useExtractionStore = defineStore("extraction", () => {
     }
   }
 
+  async function loadRelations(): Promise<void> {
+    try {
+      relations.value = (await ExtractionService.Relations()) ?? [];
+    } catch {
+      // 表清单拿不到时退回老规则（纯 ID 要唯一归属），面板照常可用。
+      relations.value = [];
+    }
+  }
+
   function applyPreset(id: string): void {
     preset.value = id;
     const chosen = presets.value.find((item) => item.id === id);
@@ -291,7 +323,7 @@ export const useExtractionStore = defineStore("extraction", () => {
     checked.value = [];
   }
 
-  watch([checked, strict, layout, form, maxEntries, lstSuggest, copyAssets], scheduleRefresh);
+  watch([checked, strict, layout, form, maxEntries, lstSuggest, copyAssets, listRelation], scheduleRefresh);
   Events.On("archive:opened", close);
   Events.On("archive:closed", close);
   Events.On("archive:changed", () => invalidate());
@@ -302,6 +334,7 @@ export const useExtractionStore = defineStore("extraction", () => {
   return {
     visible, title, seeds, extraSeeds, allSeeds, checked, layout, form, strict, lstSuggest, copyAssets,
     maxEntries, presets, preset, activePreset, applyPreset, preview, preparing, running, error, hint,
+    relations, listRelation, relationOptions,
     selectedCount, canExport,
     open, close, refresh, scheduleRefresh, acceptExtraSeeds, execute, invalidate,
     toggleCategory, selectAllCategories,

@@ -558,12 +558,29 @@ export interface ExtractionPreview {
 }
 
 /**
+ * ExtractionRelation is one registry the panel can declare as the table a
+ * pasted id list belongs to.
+ */
+export interface ExtractionRelation {
+    "name": string;
+    "rows": number;
+    "listPath"?: string;
+}
+
+/**
  * ExtractionRequest is one preview request: which entries, and how to organise
  * them. Everything the UI shows comes from the returned preview, so the
  * frontend never re-derives classification or completion itself.
  */
 export interface ExtractionRequest {
     "seeds": string[] | null;
+
+    /**
+     * ListRelation names the registry a pasted id list belongs to. It only
+     * applies to bare numeric seeds: with a declared table there is nothing to
+     * guess, so those resolve through it instead of the ambiguity guard.
+     */
+    "listRelation"?: string;
 
     /**
      * Preset applies the shipped preset's default categories when the caller left

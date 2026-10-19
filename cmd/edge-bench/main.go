@@ -43,7 +43,7 @@ func main() {
 	archivePath := flag.String("pvf", os.Getenv("PVF_TESTFILE"), "Script.pvf 路径，默认取 PVF_TESTFILE")
 	catalogPath := flag.String("catalog", "", "自定义边目录 JSON；缺省用内置 internal/extraction/edges/extract-edges.json")
 	listPath := flag.String("lists", "", "自定义 relation 定义；缺省用内置 config/lists.json")
-	flag.Var(&seeds, "seed", "归档内种子路径，可重复")
+	flag.Var(&seeds, "seed", "种子：条目路径、关系名:ID、纯 ID，或 lst 片段行（ID<TAB>路径），可重复")
 	depth := flag.Int("depth", 0, "最大引用深度，0 为不限")
 	maxEntries := flag.Int("max", 0, "最大条目数，0 为不限")
 	all := flag.Bool("all", false, "改为全归档扫描，报告全局覆盖率与未声明引用排行")

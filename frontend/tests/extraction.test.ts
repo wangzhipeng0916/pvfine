@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   ExecuteDialog: vi.fn(),
   Categories: vi.fn(),
   Presets: vi.fn(),
+  Relations: vi.fn(),
   events: new Map<string, () => void>(),
 }));
 vi.mock("../bindings/pvfine/services", () => ({ ExtractionService: mocks }));
@@ -19,6 +20,7 @@ import {
   bytesLabel,
   coverageLabel,
   parseExtraSeeds,
+  relationLabel,
   stateTotal,
   unresolvedCount,
   useExtractionStore,
@@ -66,6 +68,10 @@ beforeEach(() => {
   mocks.Presets.mockResolvedValue([
     { id: "dungeon", name: "副本", description: "副本", seedHint: "dungeon/x.dgn", categories: [] },
     { id: "equipment", name: "装备", description: "装备", seedHint: "装备:ID", categories: ["item", "attach", "ani"] },
+  ]);
+  mocks.Relations.mockResolvedValue([
+    { name: "任务", rows: -1, listPath: "" },
+    { name: "装备", rows: 119532, listPath: "equipment/equipment.lst" },
   ]);
 });
 afterEach(() => {
@@ -288,4 +294,58 @@ test("预设取不到时面板照常工作，不把错误抛给用户", async ()
   expect(store.presets).toEqual([]);
   expect(store.error).toBe("");
   expect(store.preview).not.toBeNull();
+});
+
+test("lst 片段行原样穿过拆分与合并，不被制表符切碎", () => {
+  // 片段行是"ID<TAB>路径"：拆分只按行/逗号/分号，制表符必须留着，
+  // 否则落到服务端的就不是清单行而是一堆碎片。
+  const lineFeed = String.fromCharCode(10);
+  const fragment = "46700\tequipment/character/swordman/coat/x.equ";
+  expect(parseExtraSeeds(fragment)).toEqual([fragment]);
+  expect(parseExtraSeeds([fragment, "map:1"].join(lineFeed))).toEqual([fragment, "map:1"]);
+});
+
+test("「清单所属表」下拉给出表名与行数，选中后进入请求", async () => {
+  const store = useExtractionStore();
+  void store.open(["map/forest/a.map"], "t");
+  await settle();
+  expect(store.relations.map((item) => item.name)).toEqual(["任务", "装备"]);
+  expect(store.relationOptions.map((option) => option.label)).toEqual([
+    "任务（这份归档里没有这张表）",
+    "装备 · 119532 行",
+  ]);
+  // 不选表时不进请求：服务端据此决定纯 ID 要不要走歧义守卫。
+  expect(lastRequest().listRelation).toBeUndefined();
+  store.listRelation = "装备";
+  await settle();
+  expect(lastRequest().listRelation).toBe("装备");
+});
+
+test("表清单取不到时面板照常工作，退回纯 ID 的老规则", async () => {
+  mocks.Relations.mockRejectedValue(new Error("服务未就绪"));
+  const store = useExtractionStore();
+  void store.open(["map/forest/a.map"], "t");
+  await settle();
+  expect(store.relations).toEqual([]);
+  expect(store.relationOptions).toEqual([]);
+  expect(store.error).toBe("");
+  expect(store.preview).not.toBeNull();
+});
+
+test("每次打开都重新取表清单：行数是这份归档的事实，不能跨归档沿用", async () => {
+  const store = useExtractionStore();
+  void store.open(["map/forest/a.map"], "t");
+  await settle();
+  expect(mocks.Relations).toHaveBeenCalledTimes(1);
+  store.close();
+  await nextTick();
+  void store.open(["map/forest/a.map"], "t");
+  await settle();
+  expect(mocks.Relations).toHaveBeenCalledTimes(2);
+});
+
+test("relationLabel 对缺表与零行分得清", () => {
+  expect(relationLabel({ name: "装备", rows: 119532, listPath: "equipment/equipment.lst" })).toBe("装备 · 119532 行");
+  expect(relationLabel({ name: "任务", rows: -1 })).toBe("任务（这份归档里没有这张表）");
+  expect(relationLabel({ name: "区域", rows: 0 })).toBe("区域 · 0 行");
 });
