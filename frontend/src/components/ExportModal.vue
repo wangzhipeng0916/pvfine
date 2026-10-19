@@ -72,6 +72,7 @@ function renderLabel({ option }: { option: TreeOption }) {
           <NText v-if="exporter.preview">
             {{ exporter.selectedCount }} / {{ exporter.preview.fileCount }} 个文件
             <template v-if="exporter.selectedDependencyCount">，补齐 {{ exporter.selectedDependencyCount }} 个依赖条目</template>
+            <template v-if="exporter.preview?.referenceDependencies">，另按引用闭包补入 {{ exporter.preview.referenceDependencies }} 个文件</template>
           </NText>
           <NText v-else depth="3">{{ exporter.preparing ? "准备中" : "尚无导出预览" }}</NText>
           <NTooltip>
