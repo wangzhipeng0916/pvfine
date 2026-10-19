@@ -173,6 +173,7 @@ func main() {
 			application.NewService(services.NewBookmarkService()),
 			application.NewService(services.NewArchiveDiffService(core)),
 			application.NewService(mcpService),
+			application.NewService(services.NewSkillService()),
 			application.NewService(services.NewExtractionService(core)),
 		},
 		Assets: application.AssetOptions{
