@@ -26,6 +26,9 @@ type Scanner struct {
 	indexes map[string]*sectionIndex
 	// tables caches the key→value block tables read out of other entries.
 	tables map[string]*sectionTable
+	// registrations caches the archive-path → .lst rows index that export
+	// fragments need, built at most once per scanner.
+	registrations map[string][]registeredRow
 }
 
 // NewScanner binds an archive, a catalog and a registry set together.

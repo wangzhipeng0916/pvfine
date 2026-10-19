@@ -71,7 +71,10 @@ type FragmentRecord struct {
 	Relation string `json:"relation"`
 	ListPath string `json:"listPath"`
 	Rows     int    `json:"rows"`
-	Missing  int    `json:"missing,omitempty"`
+	// EntityRows counts the rows registering this package's own files, so
+	// "这份产物里有多少实体对上了表" is visible without opening the fragment.
+	EntityRows int `json:"entityRows,omitempty"`
+	Missing    int `json:"missing,omitempty"`
 }
 
 // fragmentBody renders one fragment. The body stays pure .lst rows so it can be
@@ -82,6 +85,13 @@ func fragmentBody(f RegistryFragment) string {
 	for _, row := range f.Rows {
 		sb.WriteString(row)
 		sb.WriteByte('\n')
+	}
+	if len(f.EntityRows) > 0 {
+		sb.WriteString("\n# 以下行登记的是本次导出的实体本身：导入后游戏靠这些行找到它们。\n")
+		for _, row := range f.EntityRows {
+			sb.WriteString(row)
+			sb.WriteByte('\n')
+		}
 	}
 	if len(f.MissingIDs) > 0 {
 		sb.WriteString("\n")
@@ -417,7 +427,7 @@ func Export(a *pvf.Archive, closure *Closure, opts ExportOptions) (ExportResult,
 			}
 			manifest.Selection.RegistryFragments = append(manifest.Selection.RegistryFragments,
 				FragmentRecord{Dest: dest, Relation: fragment.Relation, ListPath: fragment.ListPath,
-					Rows: len(fragment.Rows), Missing: len(fragment.MissingIDs)})
+					Rows: len(fragment.Rows), EntityRows: len(fragment.EntityRows), Missing: len(fragment.MissingIDs)})
 		}
 		manifest.Counts["registryFragments"] = len(result.FragmentFiles)
 	}

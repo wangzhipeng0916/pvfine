@@ -89,3 +89,95 @@ func TestRegistryFragmentsCarryOnlyInvolvedRows(t *testing.T) {
 		t.Error("NoFragments 下仍写出了 _registries/")
 	}
 }
+
+// TestRegistryFragmentsRegisterEntitiesThemselves is the import half of the
+// artifact: the package must say how its own files are registered. Files
+// without their .lst row are invisible to the game, and after the fact the row
+// can only be recovered from the source archive — which the recipient of a
+// package does not have.
+func TestRegistryFragmentsRegisterEntitiesThemselves(t *testing.T) {
+	doc := Document{Version: 1, Edges: []Edge{{
+		ID: "action.useAnimation", Extensions: []string{".obj"}, Section: "use animation",
+		TokenTypes: []int32{6}, Target: Target{Kind: TargetEntry},
+	}}}
+	f := newFixtureFrom(t, nil, doc)
+	scanner := f.scannerWith(t, doc)
+	// 10 已登记（obj/door.obj）；door.ani 只有路径引用、注册表里没有它——
+	// 这是正常情形，不能因此替它编一行。
+	seed, _ := f.archive.Find("passiveobject/obj/door.obj")
+	closure, err := scanner.Closure([]int32{seed}, Options{})
+	if err != nil {
+		t.Fatalf("闭包失败: %v", err)
+	}
+	exported := []int32{}
+	for _, node := range closure.Nodes {
+		exported = append(exported, node.Index)
+	}
+	fragments := BuildRegistryFragments(scanner, exported)
+	if len(fragments) != 1 {
+		t.Fatalf("应产出 1 个片段, got %d: %+v", len(fragments), fragments)
+	}
+	fragment := fragments[0]
+	if want := "10\t`obj/door.obj`"; len(fragment.EntityRows) != 1 || fragment.EntityRows[0] != want {
+		t.Errorf("实体登记行应为 %q, got %v", want, fragment.EntityRows)
+	}
+	if len(fragment.Rows) != 0 {
+		t.Errorf("本次没有登记表引用，Rows 应为空, got %v", fragment.Rows)
+	}
+	body := fragmentBody(fragment)
+	if !strings.Contains(body, "本次导出的实体本身") || !strings.Contains(body, "10\t`obj/door.obj`") {
+		t.Errorf("片段正文缺少实体登记行:\n%s", body)
+	}
+	if strings.Contains(body, "door.ani") {
+		t.Errorf("未登记的实体不得被编出行来:\n%s", body)
+	}
+
+	// 同一行既是"被引用"又是"实体自身"时只写一次（map 引用 10，door.obj 本身也在
+	// 导出集里）。
+	base := newFixture(t)
+	baseScanner := base.scanner(t)
+	mapSeed, _ := base.archive.Find("map/forest/a.map")
+	baseClosure, err := baseScanner.Closure([]int32{mapSeed}, Options{})
+	if err != nil {
+		t.Fatalf("闭包失败: %v", err)
+	}
+	baseExported := []int32{}
+	for _, node := range baseClosure.Nodes {
+		baseExported = append(baseExported, node.Index)
+	}
+	for _, fragment := range BuildRegistryFragments(baseScanner, baseExported) {
+		for _, row := range fragment.EntityRows {
+			if row == "10\t`obj/door.obj`" {
+				t.Errorf("同一行在两段里各写一次: Rows=%v EntityRows=%v", fragment.Rows, fragment.EntityRows)
+			}
+		}
+	}
+}
+
+// TestRegistrationIndexCoversEveryTable pins the reverse index the fragment
+// uses: a path registered in two tables is reported in both, because choosing
+// one would hide a row the reader may need.
+func TestRegistrationIndexCoversEveryTable(t *testing.T) {
+	f := newFixtureFrom(t, []entry{
+		{"monster/monster.lst", "7\t`../passiveobject/obj/door.obj`\n"},
+	}, testDocument())
+	f.specs["怪物"] = annotations.RelationSpec{
+		ListPath: "monster/monster.lst", IDToken: 0, PathToken: 1, RecordTokens: 2,
+	}
+	scanner := f.scannerWith(t, testDocument())
+	index := scanner.registrationIndex()
+	rows := index[normalizeRegistryPath("passiveobject/obj/door.obj")]
+	if len(rows) != 2 {
+		t.Fatalf("door.obj 应在两张表里各有一行, got %+v", rows)
+	}
+	tables := map[string]string{}
+	for _, row := range rows {
+		tables[row.listPath] = row.row
+	}
+	if tables["passiveobject/passiveobject.lst"] != "10\t`obj/door.obj`" {
+		t.Errorf("被动对象表行不对: %+v", tables)
+	}
+	if tables["monster/monster.lst"] != "7\t`../passiveobject/obj/door.obj`" {
+		t.Errorf("怪物表行不对: %+v", tables)
+	}
+}
