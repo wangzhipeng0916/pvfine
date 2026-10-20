@@ -94,6 +94,23 @@ test("日志突发异步合并为一次界面更新，并保留容量内的顺�
   stop();
 });
 
+test("连续同文案合并为一条，错误计数仍按出现次数累加", () => {
+  const logs = useLogStore();
+  const storm = "TypeError: Cannot read properties of null (reading 'contains')";
+  for (let index = 0; index < 60; index++) logs.add("ERROR", "前端异常", storm);
+  expect(logs.entries).toHaveLength(1);
+  expect(logs.entries[0].repeat).toBe(60);
+  expect(logs.errorCount).toBe(60);
+
+  logs.add("ERROR", "前端异常", "另一条错误");
+  expect(logs.entries.at(-1)?.repeat).toBeUndefined();
+  // 中间隔了别的日志就不算连续，应当重新记一条而不是并进旧条目
+  logs.add("ERROR", "前端异常", storm);
+  expect(logs.entries).toHaveLength(3);
+  expect(logs.entries.at(-1)?.repeat).toBeUndefined();
+  expect(logs.errorCount).toBe(62);
+});
+
 test("清空时取消待发布日志，延迟历史不会重新出现", () => {
   vi.useFakeTimers();
   const logs = useLogStore();

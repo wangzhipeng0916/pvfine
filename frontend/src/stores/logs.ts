@@ -11,6 +11,8 @@ export interface LogEntry {
   source: string;
   message: string;
   backendID?: number;
+  /** 连续同文案被合并后的出现次数；缺省表示一次。 */
+  repeat?: number;
 }
 export const logCapacity = 2000;
 
@@ -25,7 +27,8 @@ export function formatLogValue(value: unknown): string {
 }
 
 export const useLogStore = defineStore("logs", () => {
-  // 日志条目只追加、不编辑，以快照发布，避免为历史记录创建深层响应式代理。
+  // 日志条目以快照发布，避免为历史记录创建深层响应式代理；条目本身只在
+  // 合并连续重复时被整体替换成新对象，不就地改字段。
   const entries = shallowRef<LogEntry[]>([]);
   const expanded = ref(false);
   const levels = ref<LogLevel[]>(["INFO", "WARN", "ERROR"]);
@@ -37,7 +40,11 @@ export const useLogStore = defineStore("logs", () => {
   let backendLogTimer: ReturnType<typeof setTimeout> | undefined;
   const seenBackendIDs = new Set<number>();
   const filtered = computed(() => entries.value.filter((entry) => levels.value.includes(entry.level)));
-  const errorCount = computed(() => entries.value.filter((entry) => entry.level === "ERROR").length);
+  // 计数按出现次数累加：合并只是折叠展示，不该让错误徽章少报。
+  const errorCount = computed(() => entries.value.reduce(
+    (total, entry) => (entry.level === "ERROR" ? total + (entry.repeat ?? 1) : total),
+    0
+  ));
 
   function publish(next: LogEntry[]) {
     const excess = Math.max(0, next.length - logCapacity);
@@ -50,9 +57,16 @@ export const useLogStore = defineStore("logs", () => {
 
   function add(level: LogLevel, source: string, ...values: unknown[]) {
     if (level === "DEBUG" && !developmentLoggingEnabled()) return;
+    const message = values.map(formatLogValue).join(" ");
+    const tail = entries.value[entries.value.length - 1];
+    // 连续同文案合并成一条：卸载后仍在跑的监听器会每帧抛一次，几十条重复
+    // 会把最有信息量的首条淹掉。合并只替换末尾元素，历史条目本身不被改写。
+    if (tail && tail.level === level && tail.source === source && tail.message === message) {
+      publish([...entries.value.slice(0, -1), { ...tail, repeat: (tail.repeat ?? 1) + 1 }]);
+      return;
+    }
     publish([...entries.value, {
-      id: `frontend-${++sequence}`, timestamp: new Date().toISOString(), level, source,
-      message: values.map(formatLogValue).join(" "),
+      id: `frontend-${++sequence}`, timestamp: new Date().toISOString(), level, source, message,
     }]);
   }
 

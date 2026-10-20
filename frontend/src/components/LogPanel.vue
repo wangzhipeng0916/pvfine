@@ -65,7 +65,7 @@ function timeText(timestamp: string): string {
       <div v-for="entry in logs.filtered" :key="entry.id" v-memo="[entry]" class="log-line" :class="`log-line--${entry.level.toLowerCase()}`">
         <time :datetime="entry.timestamp" :title="entry.timestamp">{{ timeText(entry.timestamp) }}</time>
         <span class="log-level">{{ entry.level === "ERROR" ? "ERR" : entry.level }}</span>
-        <span class="log-message"><span class="log-source">[{{ entry.source }}]</span> {{ entry.message }}</span>
+        <span class="log-message"><span class="log-source">[{{ entry.source }}]</span> {{ entry.message }}<span v-if="entry.repeat && entry.repeat > 1" class="log-repeat">×{{ entry.repeat }}</span></span>
       </div>
     </div>
   </section>
@@ -86,6 +86,14 @@ function timeText(timestamp: string): string {
 .log-content * { user-select: text; -webkit-user-select: text; }
 .log-line { display: grid; grid-template-columns: 96px 42px minmax(0, 1fr); gap: 8px; padding: 2px 0; align-items: baseline; }
 .log-message { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.log-repeat {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--pvf-surface-hover);
+  color: var(--pvf-text-muted);
+  font-size: 11px;
+}
 .log-level { font-size: 11px; }
 .log-line--debug { color: var(--pvf-text-muted); }
 .log-line--info .log-level { color: var(--pvf-info); }
