@@ -107,7 +107,10 @@ func TestMigrateLegacyData(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	moved := MigrateLegacyData()
+	moved, err := MigrateLegacyData()
+	if err != nil {
+		t.Fatalf("MigrateLegacyData() error: %v", err)
+	}
 	if len(moved) != 2 {
 		t.Fatalf("MigrateLegacyData() = %v, want settings.json 与 scripts", moved)
 	}
@@ -123,8 +126,38 @@ func TestMigrateLegacyData(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(legacyDir, "settings.json")); !os.IsNotExist(err) {
 		t.Fatalf("旧文件应当移走而不是复制: %v", err)
 	}
-	if again := MigrateLegacyData(); len(again) != 0 {
-		t.Fatalf("二次调用应当无事可做, got %v", again)
+	if again, err := MigrateLegacyData(); err != nil || len(again) != 0 {
+		t.Fatalf("二次调用应当无事可做, got %v / %v", again, err)
+	}
+}
+
+func TestMovePathFallsBackToCopy(t *testing.T) {
+	source := t.TempDir()
+	target := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(source, "scripts", "nested"), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "scripts", "nested", "a.js"), []byte("code"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	to := filepath.Join(target, "scripts")
+	// 跨盘卷时 os.Rename 会失败，这里直接验证兜底的整棵复制与删源。
+	if err := copyPath(filepath.Join(source, "scripts"), to); err != nil {
+		t.Fatalf("copyPath() error: %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(to, "nested", "a.js"))
+	if err != nil {
+		t.Fatalf("复制后读不到文件: %v", err)
+	}
+	if string(content) != "code" {
+		t.Fatalf("复制内容 = %q, want %q", content, "code")
+	}
+	if err := os.RemoveAll(filepath.Join(source, "scripts")); err != nil {
+		t.Fatalf("RemoveAll: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(source, "scripts")); !os.IsNotExist(err) {
+		t.Fatalf("源目录应当被删掉: %v", err)
 	}
 }
 
@@ -135,8 +168,9 @@ func TestMigrateWithoutLegacyData(t *testing.T) {
 	t.Setenv("APPDATA", legacy)
 	t.Setenv("XDG_CONFIG_HOME", legacy)
 
-	if moved := MigrateLegacyData(); len(moved) != 0 {
-		t.Fatalf("旧目录不存在时应当无事可做, got %v", moved)
+	moved, err := MigrateLegacyData()
+	if err != nil || len(moved) != 0 {
+		t.Fatalf("旧目录不存在时应当无事可做, got %v / %v", moved, err)
 	}
 	// 迁移不该顺手把旧目录建出来。
 	legacyDir := filepath.Join(legacy, "pvfine")

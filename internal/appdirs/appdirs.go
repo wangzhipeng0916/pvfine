@@ -3,9 +3,11 @@
 package appdirs
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -95,33 +97,88 @@ func LegacyDataDir() (string, error) {
 }
 
 // MigrateLegacyData 把旧配置目录里的数据搬进数据目录，返回搬动的条目名。
-// 只在目标不存在时移动，任何一步出错都保留原件；可重复调用。
-func MigrateLegacyData() []string {
+// 只在目标不存在时移动；单个条目失败不连累其余条目，失败原因合并成 error 返回
+// （静默跳过会让"迁移没发生"这件事完全看不出来）。
+func MigrateLegacyData() ([]string, error) {
 	target, err := DataDir()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	source, err := LegacyDataDir()
-	if err != nil || source == target {
-		return nil
+	if err != nil {
+		return nil, err
+	}
+	if source == target {
+		return nil, nil
 	}
 	entries, err := os.ReadDir(source)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var moved []string
+	var failures []string
 	for _, entry := range entries {
-		from := filepath.Join(source, entry.Name())
-		to := filepath.Join(target, entry.Name())
+		name := entry.Name()
+		from := filepath.Join(source, name)
+		to := filepath.Join(target, name)
 		if _, err := os.Stat(to); err == nil {
 			continue
 		}
-		if err := os.Rename(from, to); err != nil {
+		if err := movePath(from, to); err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %v", name, err))
 			continue
 		}
-		moved = append(moved, entry.Name())
+		moved = append(moved, name)
 	}
-	return moved
+	if len(failures) > 0 {
+		return moved, errors.New(strings.Join(failures, "; "))
+	}
+	return moved, nil
+}
+
+// movePath 把 from 搬到 to。os.Rename 跨盘卷会直接失败（配置常在系统盘、exe 可能
+// 在别的盘），所以失败时退回"复制后删源"，目录整棵搬。
+func movePath(from, to string) error {
+	if err := os.Rename(from, to); err == nil {
+		return nil
+	}
+	if err := copyPath(from, to); err != nil {
+		return err
+	}
+	return os.RemoveAll(from)
+}
+
+func copyPath(from, to string) error {
+	info, err := os.Lstat(from)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		entries, err := os.ReadDir(from)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(to, 0o755); err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := copyPath(filepath.Join(from, entry.Name()), filepath.Join(to, entry.Name())); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	content, err := os.ReadFile(from)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(to, content, info.Mode().Perm())
 }
 
 func ensure(dir string) (string, error) {
