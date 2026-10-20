@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -16,25 +17,31 @@ type SkillTreeRegistration struct {
 	Path string `json:"path"`
 }
 type SkillTreeNode struct {
-	ID            int             `json:"id"`
-	X             int             `json:"x"`
-	Y             int             `json:"y"`
-	PositionKind  string          `json:"positionKind"`
-	Position      []int           `json:"position"`
-	Next          []int           `json:"next"`
-	Name          string          `json:"name"`
-	Explain       string          `json:"explain"`
-	Path          string          `json:"path"`
-	FileIndex     int32           `json:"fileIndex"`
-	Icon          *ImageReference `json:"icon"`
-	RequiredLevel *int            `json:"requiredLevel"`
+	SourceStart    int             `json:"sourceStart"`
+	SourceClose    int             `json:"sourceClose"`
+	PositionTokens []SkillNumber   `json:"positionTokens"`
+	NextTokens     []SkillNumber   `json:"nextTokens"`
+	ID             int             `json:"id"`
+	X              int             `json:"x"`
+	Y              int             `json:"y"`
+	PositionKind   string          `json:"positionKind"`
+	Position       []int           `json:"position"`
+	Next           []int           `json:"next"`
+	Name           string          `json:"name"`
+	Explain        string          `json:"explain"`
+	Path           string          `json:"path"`
+	FileIndex      int32           `json:"fileIndex"`
+	Icon           *ImageReference `json:"icon"`
+	RequiredLevel  *int            `json:"requiredLevel"`
 }
 type SkillTreeBranch struct {
-	Job   string          `json:"job"`
-	Name  string          `json:"name"`
-	Nodes []SkillTreeNode `json:"nodes"`
+	InsertOffset int             `json:"insertOffset"`
+	Job          string          `json:"job"`
+	Name         string          `json:"name"`
+	Nodes        []SkillTreeNode `json:"nodes"`
 }
 type SkillTreeDocument struct {
+	Text      string            `json:"text"`
 	FileIndex int32             `json:"fileIndex"`
 	Path      string            `json:"path"`
 	Common    []SkillTreeNode   `json:"common"`
@@ -92,6 +99,20 @@ func (s *FileGUIService) ListSkillTrees() ([]SkillTreeRegistration, error) {
 func (s *FileGUIService) ReadSkillTree(job, kind string) (*SkillTreeDocument, error) {
 	s.c.mu.Lock()
 	defer s.c.mu.Unlock()
+	return s.readSkillTreeLocked(job, kind, nil)
+}
+
+// ReadSkillTreeDraft projects the editor draft without changing the archive.
+func (s *FileGUIService) ReadSkillTreeDraft(job, kind, text string) (*SkillTreeDocument, error) {
+	s.c.mu.Lock()
+	defer s.c.mu.Unlock()
+	if len(text) > int(s.c.editableByteLimit()) {
+		return nil, fmt.Errorf("技能树文本过大")
+	}
+	return s.readSkillTreeLocked(job, kind, &text)
+}
+
+func (s *FileGUIService) readSkillTreeLocked(job, kind string, draft *string) (*SkillTreeDocument, error) {
 	a := s.c.archive
 	if a == nil {
 		return nil, ErrNoArchive
@@ -114,49 +135,17 @@ func (s *FileGUIService) ReadSkillTree(job, kind string) (*SkillTreeDocument, er
 	if err != nil {
 		return nil, err
 	}
+	if draft != nil {
+		text = *draft
+	}
 	doc := parseSkillTree(text)
 	// Use the archive identity, not the registration spelling (often mixed case).
 	treeIndex, _ := a.Find(p) // skillTreeText above already validated this lookup.
 	doc.FileIndex = treeIndex
 	doc.Path = a.Path(treeIndex)
-	// Discover the actual job lists through skilllist.lst, including newer jobs.
-	listIndex, ok := a.Find("skill/skilllist.lst")
-	if !ok {
-		return nil, fmt.Errorf("找不到职业技能列表 skill/skilllist.lst")
-	}
-	lists, err := a.ListPairs(listIndex)
+	paths, err := skillTreeSkillPaths(a, job)
 	if err != nil {
 		return nil, err
-	}
-	jobKey := strings.ReplaceAll(strings.Trim(job, "[]"), " ", "")
-	if jobKey == "demonicswordman" {
-		jobKey = "dsswordman"
-	}
-	var listPath string
-	for _, pair := range lists {
-		key := strings.ToLower(strings.TrimSuffix(path.Base(strings.ReplaceAll(pair.Path, "\\", "/")), path.Ext(pair.Path)))
-		key = strings.TrimSuffix(key, "skill")
-		if key == jobKey {
-			listPath = path.Join("skill", strings.ReplaceAll(pair.Path, "\\", "/"))
-			break
-		}
-	}
-	if listPath == "" {
-		return nil, fmt.Errorf("未找到职业 %s 对应的技能列表", job)
-	}
-	li, ok := a.Find(listPath)
-	if !ok {
-		return nil, fmt.Errorf("找不到职业技能列表：%s", listPath)
-	}
-	pairs, err := a.ListPairs(li)
-	if err != nil {
-		return nil, err
-	}
-	paths := map[int]string{}
-	for _, pair := range pairs {
-		if id, err := strconv.Atoi(pair.ID); err == nil {
-			paths[id] = path.Join("skill", strings.ReplaceAll(pair.Path, "\\", "/"))
-		}
 	}
 	cache := map[int]SkillTreeNode{}
 	resolve := func(n *SkillTreeNode) {
@@ -194,7 +183,7 @@ func (s *FileGUIService) ReadSkillTree(job, kind string) (*SkillTreeDocument, er
 		doc.Issues = append(doc.Issues, e.Error())
 	} else {
 		for _, id := range parseCommonSkillIDs(commonText, job) {
-			n := SkillTreeNode{ID: id, Next: []int{}, Position: []int{}}
+			n := SkillTreeNode{ID: id, SourceStart: -1, Next: []int{}, Position: []int{}, PositionTokens: []SkillNumber{}}
 			resolve(&n)
 			doc.Common = append(doc.Common, n)
 		}
@@ -261,18 +250,28 @@ func parseCommonSkillIDs(text, job string) []int {
 }
 
 func parseSkillTree(text string) *SkillTreeDocument {
-	doc := &SkillTreeDocument{Common: []SkillTreeNode{}, Branches: []SkillTreeBranch{}, Issues: []string{}}
+	doc := &SkillTreeDocument{Text: text, Common: []SkillTreeNode{}, Branches: []SkillTreeBranch{}, Issues: []string{}}
+	closingOffsets := pvf.ScriptSectionClosingOffsets(text, "character job")
+	skillClosingOffsets := pvf.ScriptSectionClosingOffsets(text, "skill info")
 	var branch *SkillTreeBranch
 	var node *SkillTreeNode
 	for _, e := range pvf.ParseScriptView(text).Elements {
 		if e.Kind == pvf.ScriptElementSection {
 			if e.Section == "character job" {
-				doc.Branches = append(doc.Branches, SkillTreeBranch{Nodes: []SkillTreeNode{}})
+				offset, closed := closingOffsets[e.Start]
+				if !closed {
+					offset = -1
+				}
+				doc.Branches = append(doc.Branches, SkillTreeBranch{InsertOffset: offset, Nodes: []SkillTreeNode{}})
 				branch = &doc.Branches[len(doc.Branches)-1]
 				node = nil
 			}
 			if e.Section == "skill info" && branch != nil {
-				branch.Nodes = append(branch.Nodes, SkillTreeNode{ID: -1, FileIndex: -1, Position: []int{}, Next: []int{}})
+				closeOffset, closed := skillClosingOffsets[e.Start]
+				if !closed {
+					closeOffset = -1
+				}
+				branch.Nodes = append(branch.Nodes, SkillTreeNode{SourceStart: e.Start, SourceClose: closeOffset, ID: -1, FileIndex: -1, Position: []int{}, PositionTokens: []SkillNumber{}, NextTokens: []SkillNumber{}, Next: []int{}})
 				node = &branch.Nodes[len(branch.Nodes)-1]
 			}
 			continue
@@ -301,12 +300,17 @@ func parseSkillTree(text string) *SkillTreeDocument {
 			node.ID = v
 		case "next skill":
 			node.Next = append(node.Next, v)
+			node.NextTokens = append(node.NextTokens, SkillNumber{Value: float64(v), Start: e.Start, End: e.End, TokenType: e.TokenType})
 		case "cell pos", "icon pos":
 			if e.Index == 0 {
 				node.PositionKind = e.Section
 				node.Position = []int{v}
+				node.PositionTokens = []SkillNumber{}
 			} else if e.Index == 1 {
 				node.Position = append(node.Position, v)
+			}
+			if e.Index <= 1 {
+				node.PositionTokens = append(node.PositionTokens, SkillNumber{Value: float64(v), Start: e.Start, End: e.End, TokenType: e.TokenType})
 			}
 		}
 	}
@@ -333,4 +337,82 @@ func parseSkillTree(text string) *SkillTreeDocument {
 		doc.Branches[bi].Nodes = valid
 	}
 	return doc
+}
+
+func skillTreeSkillPaths(a *pvf.Archive, job string) (map[int]string, error) {
+	// Discover the job list through skilllist.lst, including newer jobs.
+	listIndex, ok := a.Find("skill/skilllist.lst")
+	if !ok {
+		return nil, fmt.Errorf("找不到职业技能列表 skill/skilllist.lst")
+	}
+	lists, err := a.ListPairs(listIndex)
+	if err != nil {
+		return nil, err
+	}
+	jobKey := strings.ReplaceAll(strings.Trim(job, "[]"), " ", "")
+	if jobKey == "demonicswordman" {
+		jobKey = "dsswordman"
+	}
+	var listPath string
+	for _, pair := range lists {
+		key := strings.ToLower(strings.TrimSuffix(path.Base(strings.ReplaceAll(pair.Path, "\\", "/")), path.Ext(pair.Path)))
+		key = strings.TrimSuffix(key, "skill")
+		if key == jobKey {
+			listPath = path.Join("skill", strings.ReplaceAll(pair.Path, "\\", "/"))
+			break
+		}
+	}
+	if listPath == "" {
+		return nil, fmt.Errorf("未找到职业 %s 对应的技能列表", job)
+	}
+	li, ok := a.Find(listPath)
+	if !ok {
+		return nil, fmt.Errorf("找不到职业技能列表：%s", listPath)
+	}
+	pairs, err := a.ListPairs(li)
+	if err != nil {
+		return nil, err
+	}
+	paths := map[int]string{}
+	for _, pair := range pairs {
+		if id, err := strconv.Atoi(pair.ID); err == nil {
+			paths[id] = path.Join("skill", strings.ReplaceAll(pair.Path, "\\", "/"))
+		}
+	}
+	return paths, nil
+}
+
+type SkillTreeSkill struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	FileIndex int32  `json:"fileIndex"`
+}
+
+// ListSkillTreeSkills lists registered IDs in the current job, including common skills.
+func (s *FileGUIService) ListSkillTreeSkills(job string) ([]SkillTreeSkill, error) {
+	s.c.mu.Lock()
+	defer s.c.mu.Unlock()
+	a := s.c.archive
+	if a == nil {
+		return nil, ErrNoArchive
+	}
+	paths, err := skillTreeSkillPaths(a, job)
+	if err != nil {
+		return nil, err
+	}
+	result := []SkillTreeSkill{}
+	for id, p := range paths {
+		index, found := a.Find(p)
+		if !found {
+			continue
+		}
+		name := path.Base(p)
+		if meta, err := a.ScriptMetadata(index); err == nil && meta.HasName {
+			name = resolvePreviewText(a, meta.Name)
+		}
+		result = append(result, SkillTreeSkill{ID: id, Name: name, Path: a.Path(index), FileIndex: index})
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
 }

@@ -31,6 +31,13 @@ export function ApplyWorldDropEdit(req: $models.WorldDropEditRequest): $Cancella
     return $Call.ByID(237649473, req);
 }
 
+/**
+ * ListSkillTreeSkills lists registered IDs in the current job, including common skills.
+ */
+export function ListSkillTreeSkills(job: string): $CancellablePromise<$models.SkillTreeSkill[] | null> {
+    return $Call.ByID(2588513399, job);
+}
+
 export function ListSkillTrees(): $CancellablePromise<$models.SkillTreeRegistration[] | null> {
     return $Call.ByID(2559201962);
 }
@@ -67,6 +74,13 @@ export function ReadSkill(fileIndex: number, text: string): $CancellablePromise<
  */
 export function ReadSkillTree(job: string, kind: string): $CancellablePromise<$models.SkillTreeDocument | null> {
     return $Call.ByID(2818122281, job, kind);
+}
+
+/**
+ * ReadSkillTreeDraft projects the editor draft without changing the archive.
+ */
+export function ReadSkillTreeDraft(job: string, kind: string, text: string): $CancellablePromise<$models.SkillTreeDocument | null> {
+    return $Call.ByID(3201412064, job, kind, text);
 }
 
 export function ReadUpgrade(fileIndex: number, text: string): $CancellablePromise<$models.UpgradeDocument | null> {

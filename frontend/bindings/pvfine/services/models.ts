@@ -1337,12 +1337,14 @@ export interface SkillPropertyBinding {
 }
 
 export interface SkillTreeBranch {
+    "insertOffset": number;
     "job": string;
     "name": string;
     "nodes": SkillTreeNode[] | null;
 }
 
 export interface SkillTreeDocument {
+    "text": string;
     "fileIndex": number;
     "path": string;
     "common": SkillTreeNode[] | null;
@@ -1351,6 +1353,10 @@ export interface SkillTreeDocument {
 }
 
 export interface SkillTreeNode {
+    "sourceStart": number;
+    "sourceClose": number;
+    "positionTokens": SkillNumber[] | null;
+    "nextTokens": SkillNumber[] | null;
     "id": number;
     "x": number;
     "y": number;
@@ -1372,6 +1378,13 @@ export interface SkillTreeRegistration {
     "job": string;
     "kind": string;
     "path": string;
+}
+
+export interface SkillTreeSkill {
+    "id": number;
+    "name": string;
+    "path": string;
+    "fileIndex": number;
 }
 
 export interface StoredFileSet {
