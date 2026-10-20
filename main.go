@@ -19,8 +19,8 @@ import (
 	"pvfine/services"
 )
 
-// Release builds replace these values with -ldflags. Local builds use a
-// synthetic baseline version so manual update checks remain available.
+// Release builds replace these values with -ldflags. Local builds keep the
+// placeholder version below, which turns the updater off entirely.
 var (
 	appVersion       = "0.0.0"
 	githubRepository = "dof-dev/pvfine"
@@ -185,12 +185,11 @@ func main() {
 		},
 	})
 	services.ObserveLogEvents(app)
-	app.RegisterService(application.NewService(services.NewUpdateService(app, appVersion)))
+	updaterEnabled := configureUpdater(app)
+	app.RegisterService(application.NewService(services.NewUpdateService(app, appVersion, updaterEnabled)))
 	scriptWindowService := services.NewScriptWindowService(app)
 	app.RegisterService(application.NewService(scriptWindowService))
 	closeCoordinator := newCloseCoordinator(app, scriptWindowService)
-
-	updaterEnabled := configureUpdater(app)
 
 	menu := app.Menu.New()
 	app.Menu.SetApplicationMenu(menu)
@@ -280,11 +279,23 @@ func main() {
 	}
 }
 
-func configureUpdater(app *application.App) bool {
+// isReleaseBuild reports whether the binary carries a real release version.
+// Local builds keep "0.0.0" (source default) or "dev" (task default); letting
+// the updater run there would replace the development binary with a GitHub
+// release, because any release compares greater than a placeholder version.
+func isReleaseBuild() bool {
 	version := strings.TrimPrefix(appVersion, "v")
-	if githubRepository == "" || version == "" {
+	if version == "" || version == "dev" || version == "0.0.0" {
 		return false
 	}
+	return githubRepository != ""
+}
+
+func configureUpdater(app *application.App) bool {
+	if !isReleaseBuild() {
+		return false
+	}
+	version := strings.TrimPrefix(appVersion, "v")
 
 	provider, err := githubupdater.New(githubupdater.Config{
 		Repository:    githubRepository,
@@ -307,10 +318,6 @@ func configureUpdater(app *application.App) bool {
 }
 
 func startBackgroundUpdateCheck(app *application.App) {
-	if githubRepository == "" || appVersion == "" || appVersion == "dev" || appVersion == "0.0.0" {
-		return
-	}
-
 	go func() {
 		// Give the first window time to enter the event loop before opening the
 		// updater window when a newer release is available.

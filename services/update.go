@@ -12,10 +12,12 @@ import (
 type UpdateService struct {
 	app     *application.App
 	version string
+	// enabled is false for local builds, whose updater is never initialised.
+	enabled bool
 }
 
-func NewUpdateService(app *application.App, version string) *UpdateService {
-	return &UpdateService{app: app, version: version}
+func NewUpdateService(app *application.App, version string, enabled bool) *UpdateService {
+	return &UpdateService{app: app, version: version, enabled: enabled}
 }
 
 // Version reports the running application version so the frontend can display
@@ -30,7 +32,10 @@ func (s *UpdateService) Version() string {
 // CheckForUpdates checks the configured release source and opens the Wails
 // updater flow when an update is available.
 func (s *UpdateService) CheckForUpdates() error {
-	if s == nil || s.app == nil || s.app.Updater == nil {
+	if s == nil || !s.enabled {
+		return errors.New("本地构建不接入更新频道")
+	}
+	if s.app == nil || s.app.Updater == nil {
 		return errors.New("更新功能未初始化")
 	}
 	return s.app.Updater.CheckAndInstall(context.Background())

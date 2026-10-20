@@ -61,6 +61,7 @@ import {
 } from "../stores/settings";
 import { useAutosaveStore } from "../stores/autosave";
 import { setDialogBusy } from "../dialogBusy";
+import { isLocalBuildVersion, normalizeBuildVersion } from "../updateChannel";
 import { useEditorStore } from "../stores/editor";
 import { useExplorerStore } from "../stores/explorer";
 import { useImageStore } from "../stores/images";
@@ -208,10 +209,13 @@ const cachePercentages = computed(() => {
 
 // 版本号由 Go 侧在构建时注入
 const versionLabel = computed(() => {
-  const raw = appVersion.value.trim().replace(/^v/i, "");
+  const raw = normalizeBuildVersion(appVersion.value);
   if (!raw) return "";
   return raw === "dev" ? raw : `v${raw}`;
 });
+
+// 本地构建不接入更新频道，否则官方安装包会覆盖开发用的 exe
+const updateChannelDisabled = computed(() => isLocalBuildVersion(appVersion.value));
 
 // 打开设置界面时统计一次缓存占用，避免常驻轮询
 watch(
@@ -1343,7 +1347,11 @@ function formatBytes(bytes: number): string {
                     <div class="setting-item-content">
                       <div class="setting-item-label">检查版本更新</div>
                       <div class="setting-item-desc">
-                        连接 GitHub Release 频道检测是否有可用的新版本与性能优化
+                        {{
+                          updateChannelDisabled
+                            ? "本地构建不接入 Release 更新频道，避免官方安装包覆盖开发用的程序"
+                            : "连接 GitHub Release 频道检测是否有可用的新版本与性能优化"
+                        }}
                       </div>
                     </div>
                     <div class="setting-item-control">
@@ -1351,6 +1359,7 @@ function formatBytes(bytes: number): string {
                         size="small"
                         secondary
                         :loading="checkingUpdates"
+                        :disabled="updateChannelDisabled"
                         aria-label="检查更新"
                         @click="onCheckUpdates"
                       >
@@ -1528,6 +1537,7 @@ function formatBytes(bytes: number): string {
                       secondary
                       round
                       :loading="checkingUpdates"
+                      :disabled="updateChannelDisabled"
                       class="about-update-btn"
                       aria-label="检查更新"
                       @click="onCheckUpdates"
