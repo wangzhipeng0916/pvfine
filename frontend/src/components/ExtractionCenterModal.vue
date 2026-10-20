@@ -291,6 +291,13 @@ const stateType = (name: string): "success" | "warning" | "error" | "default" =>
       </NAlert>
       <NAlert v-if="extraction.hint" type="info" :show-icon="false">{{ extraction.hint }}</NAlert>
       <NAlert v-if="extraction.error" type="error">{{ extraction.error }}</NAlert>
+      <!-- 有预览时同一条原因已经在 warnings 里，避免同屏出现两次。 -->
+      <NAlert v-if="extraction.catalogStatus?.warning && !extraction.preview" type="warning" :show-icon="false">
+        边目录：{{ extraction.catalogStatus.warning }}
+      </NAlert>
+      <NText v-if="extraction.catalogSourceLabel" depth="3" class="extraction-catalog">
+        {{ extraction.catalogSourceLabel }}
+      </NText>
 
       <NText v-if="extraction.preview" depth="3" class="extraction-dir">
         落点由系统目录对话框选择；产物含 manifest.json、report/ 四份清单与 _registries/ 登记表片段。
@@ -423,5 +430,11 @@ const stateType = (name: string): "success" | "warning" | "error" | "default" =>
   display: block;
   margin: 2px 0 6px;
   line-height: 1.5;
+}
+.extraction-catalog {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

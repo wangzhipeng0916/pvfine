@@ -1,11 +1,14 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	annotationrules "pvfine/internal/annotations"
 	"pvfine/internal/appdirs"
@@ -17,6 +20,30 @@ import (
 type RuleService struct{ c *core }
 
 func NewRuleService(c *core) *RuleService { return &RuleService{c: c} }
+
+// ServiceStartup creates empty overlay documents for the rule editor. In
+// development the store reads and writes the repository source files and never
+// reads the overlays, so creating them there would only mislead.
+func (s *RuleService) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
+	if buildmode.Development {
+		return nil
+	}
+	ensureRuleOverlayFiles()
+	return nil
+}
+
+func ensureRuleOverlayFiles() {
+	for _, name := range []string{"annotations.user.json", "rendering.user.json"} {
+		path, err := appdirs.DataFile(name)
+		if err != nil {
+			developmentOrErrorLog(err, "[pvfine:rules] 定位 %s 失败: %v", name, err)
+			continue
+		}
+		if _, err := ensureConfigFile(path, []byte(ruleOverlayTemplate)); err != nil {
+			developmentOrErrorLog(err, "[pvfine:rules] 初始化 %s 失败: %v", name, err)
+		}
+	}
+}
 
 type RuleTarget struct {
 	Category  string `json:"category"`

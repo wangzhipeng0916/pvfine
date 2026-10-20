@@ -1,12 +1,15 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"pvfine/internal/appdirs"
 )
@@ -51,6 +54,18 @@ func NewFileSetService() *FileSetService {
 
 func newFileSetService(path string) *FileSetService {
 	return &FileSetService{path: path}
+}
+
+// ServiceStartup creates an empty file-set document when none exists. The
+// built-in "默认文件集" is constructed in the frontend, so the file starts empty.
+func (s *FileSetService) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
+	if s.initErr != nil {
+		return nil
+	}
+	if _, err := ensureConfigFile(s.path, []byte(fileSetConfigTemplate)); err != nil {
+		developmentOrErrorLog(err, "[pvfine:filesets] 初始化文件集配置文件失败: %v", err)
+	}
+	return nil
 }
 
 // LoadFileSets 从用户配置目录读取已保存的文件集。文件不存在时返回空文档。

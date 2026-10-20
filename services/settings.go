@@ -1,12 +1,15 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"pvfine/internal/appdirs"
 )
@@ -93,6 +96,25 @@ func NewSettingsService() *SettingsService {
 
 func newSettingsService(path string) *SettingsService {
 	return &SettingsService{path: path}
+}
+
+// ServiceStartup writes the defaults to settings.json when the file does not
+// exist yet. LoadSettings would return the same values without a file; creating
+// it just makes the available knobs discoverable and editable.
+func (s *SettingsService) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
+	if s.initErr != nil {
+		return nil
+	}
+	data, err := json.MarshalIndent(DefaultAppSettings(), "", "  ")
+	if err != nil {
+		developmentOrErrorLog(err, "[pvfine:settings] 编码默认设置失败: %v", err)
+		return nil
+	}
+	data = append(data, '\n')
+	if _, err := ensureConfigFile(s.path, data); err != nil {
+		developmentOrErrorLog(err, "[pvfine:settings] 初始化设置文件失败: %v", err)
+	}
+	return nil
 }
 
 func (s *SettingsService) GetSettings() (AppSettings, error) {

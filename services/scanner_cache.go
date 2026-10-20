@@ -78,18 +78,23 @@ func coreWitness(c *core) witnessFunc {
 }
 
 // scannerCache holds one warmed scanner keyed by everything its internals cache:
-// the archive pointer and generation (structural changes), the rule engine
-// identity (the relation table it resolves with is loaded from the document that
-// was activated), and a content witness over the registry lists plus section
-// indexes, because a .lst edit changes neither of the first two while it changes
-// every answer the cached registries would give.
+// the archive pointer and generation (structural changes), the effective edge
+// catalog (the scanner keeps it), the rule engine identity (the relation table it
+// resolves with is loaded from the document that was activated), and a content
+// witness over the registry lists plus section indexes, because a .lst edit
+// changes none of the first three while it changes every answer the cached
+// registries would give.
 //
 // Extraction and MOD export both need this. Duplicating the key rules in two
 // places is how one of them drifts stale, so there is exactly one implementation.
 type scannerCache struct {
-	mu         sync.Mutex
-	scanner    *extraction.Scanner
-	archive    *pvf.Archive
+	mu      sync.Mutex
+	scanner *extraction.Scanner
+	archive *pvf.Archive
+	// catalogKey identifies the edge catalog the scanner was built with. The
+	// scanner caches the catalog internally, so without this key an edited
+	// catalog would stay invisible until the archive or rules changed.
+	catalogKey string
 	generation uint64
 	rules      *annotations.Engine
 	watched    []int32
@@ -104,17 +109,19 @@ type scannerCache struct {
 // discipline stays where the lock actually is held.
 func (sc *scannerCache) forArchive(c *core, archive *pvf.Archive, generation uint64,
 	rules *annotations.Engine, witness witnessFunc, onRebuild func()) (*extraction.Scanner, error) {
+	snapshot, err := extractionCatalog.Load()
+	if err != nil {
+		return nil, err
+	}
 	sc.mu.Lock()
-	cached, same := sc.scanner, sc.archive == archive && sc.generation == generation && sc.rules == rules
+	cached, same := sc.scanner, sc.archive == archive && sc.generation == generation &&
+		sc.rules == rules && sc.catalogKey == snapshot.key
 	watched, digest := sc.watched, sc.digest
 	sc.mu.Unlock()
 	if cached != nil && same && witness(archive, watched) == digest {
 		return cached, nil
 	}
-	catalog, err := extraction.LoadCatalog(extraction.EmbeddedEdges)
-	if err != nil {
-		return nil, err
-	}
+	catalog := snapshot.catalog
 	specs, err := relationSpecsOf(c)
 	if err != nil {
 		return nil, err
@@ -140,6 +147,7 @@ func (sc *scannerCache) forArchive(c *core, archive *pvf.Archive, generation uin
 	digest = witness(archive, indexes)
 	sc.mu.Lock()
 	sc.scanner, sc.archive, sc.generation, sc.rules = scanner, archive, generation, rules
+	sc.catalogKey = snapshot.key
 	sc.watched, sc.digest = indexes, digest
 	if onRebuild != nil {
 		onRebuild()

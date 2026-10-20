@@ -495,6 +495,52 @@ export interface ExportRequest {
 }
 
 /**
+ * ExtractionCatalogStatus says which catalog is in effect and why. The panel
+ * shows it because a silently overridden catalog is indistinguishable from a
+ * broken one: an edge the user added but the app did not pick up would otherwise
+ * look like a traversal bug.
+ */
+export interface ExtractionCatalogStatus {
+    /**
+     * Source is "builtin" or "external".
+     */
+    "source": string;
+
+    /**
+     * Path is the external file when one exists.
+     */
+    "path"?: string;
+
+    /**
+     * EdgeCount is the effective catalog's edge count after merging.
+     */
+    "edgeCount": number;
+
+    /**
+     * BuiltinEdgeCount is how many edges ship with the application.
+     */
+    "builtinEdgeCount": number;
+
+    /**
+     * ExternalEdgeCount is how many edges the external file declares.
+     */
+    "externalEdgeCount": number;
+
+    /**
+     * ExternalCategoryCount is how many categories it declares, so an
+     * initialized-but-empty file can say "no overrides yet" instead of looking
+     * like an active override.
+     */
+    "externalCategoryCount": number;
+
+    /**
+     * Warning carries a load or validation error. The effective catalog stays
+     * the last one that parsed, so a half-written file never breaks extraction.
+     */
+    "warning"?: string;
+}
+
+/**
  * ExtractionCategory is one declared export category.
  */
 export interface ExtractionCategory {

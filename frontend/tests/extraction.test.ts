@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   Categories: vi.fn(),
   Presets: vi.fn(),
   Relations: vi.fn(),
+  CatalogStatus: vi.fn(),
   events: new Map<string, () => void>(),
 }));
 vi.mock("../bindings/pvfine/services", () => ({ ExtractionService: mocks }));
@@ -73,6 +74,13 @@ beforeEach(() => {
     { name: "任务", rows: -1, listPath: "" },
     { name: "装备", rows: 119532, listPath: "equipment/equipment.lst" },
   ]);
+  mocks.CatalogStatus.mockResolvedValue({
+    source: "builtin",
+    edgeCount: 223,
+    builtinEdgeCount: 223,
+    externalEdgeCount: 0,
+    externalCategoryCount: 0,
+  });
 });
 afterEach(() => {
   useExtractionStore().close();
@@ -194,8 +202,60 @@ test("空种子打开后贴上清单就能出预览", async () => {
   expect(request.listRelation).toBe("装备");
 });
 
-test("在目录对话框里取消不应结束会话，也不该报错", async () => {
+test("打开面板时说清生效的是哪份边目录", async () => {
   const store = useExtractionStore();
+  void store.open(["map/forest/a.map"], "t");
+  await settle();
+  expect(store.catalogStatus?.source).toBe("builtin");
+  expect(store.catalogSourceLabel).toBe("边目录：内置 223 条");
+});
+
+test("外部边目录生效时显示声明数与文件路径", async () => {
+  mocks.CatalogStatus.mockResolvedValue({
+    source: "external",
+    path: "D:/pvfine-data/extract-edges.json",
+    edgeCount: 230,
+    builtinEdgeCount: 223,
+    externalEdgeCount: 9,
+    externalCategoryCount: 1,
+    warning: "解析外部边目录失败：unexpected end of JSON input（继续使用上一次可用的外部目录）",
+  });
+  const store = useExtractionStore();
+  void store.open(["map/forest/a.map"], "t");
+  await settle();
+  expect(store.catalogStatus?.warning).toContain("解析外部边目录失败");
+  expect(store.catalogSourceLabel).toContain("外部文件声明 9 条");
+  expect(store.catalogSourceLabel).toContain("生效 230 条");
+  expect(store.catalogSourceLabel).toContain("D:/pvfine-data/extract-edges.json");
+});
+
+test("启动初始化的空外部文件不应显示成已覆盖", async () => {
+  mocks.CatalogStatus.mockResolvedValue({
+    source: "external",
+    path: "D:/pvfine-data/extract-edges.json",
+    edgeCount: 223,
+    builtinEdgeCount: 223,
+    externalEdgeCount: 0,
+    externalCategoryCount: 0,
+  });
+  const store = useExtractionStore();
+  void store.open(["map/forest/a.map"], "t");
+  await settle();
+  expect(store.catalogSourceLabel).toContain("外部文件已就绪（未声明覆盖）");
+  expect(store.catalogSourceLabel).toContain("生效 223 条");
+});
+
+test("边目录来源取不到不影响提取", async () => {
+  mocks.CatalogStatus.mockRejectedValue(new Error("boom"));
+  const store = useExtractionStore();
+  void store.open(["map/forest/a.map"], "t");
+  await settle();
+  expect(store.catalogStatus).toBeNull();
+  expect(store.catalogSourceLabel).toBe("");
+  expect(store.preview).not.toBeNull();
+});
+
+test("在目录对话框里取消不应结束会话，也不该报错", async () => {  const store = useExtractionStore();
   void store.open(["map/forest/a.map"], "t");
   await settle();
   mocks.ExecuteDialog.mockResolvedValueOnce(null);

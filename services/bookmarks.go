@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -100,6 +101,19 @@ func NewBookmarkService() *BookmarkService {
 
 func newBookmarkService(path string) *BookmarkService {
 	return newBookmarkServiceWithSource(path, "")
+}
+
+// ServiceStartup creates an empty custom-book document when none exists. The
+// built-in book stays where it always was (injected at load), so the user file
+// never duplicates or pins it.
+func (s *BookmarkService) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
+	if s.initErr != nil {
+		return nil
+	}
+	if _, err := ensureConfigFile(s.path, []byte(bookmarkConfigTemplate)); err != nil {
+		developmentOrErrorLog(err, "[pvfine:bookmarks] 初始化书签配置文件失败: %v", err)
+	}
+	return nil
 }
 
 func newBookmarkServiceWithSource(path, sourcePath string) *BookmarkService {

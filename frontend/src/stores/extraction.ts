@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 import { Events } from "@wailsio/runtime";
 import { ExtractionService } from "../../bindings/pvfine/services";
 import type {
+  ExtractionCatalogStatus,
   ExtractionPreview,
   ExtractionPreset,
   ExtractionRelation,
@@ -95,6 +96,17 @@ export const useExtractionStore = defineStore("extraction", () => {
     relations.value.map((item) => ({ label: relationLabel(item), value: item.name })),
   );
   const maxEntries = ref(0);
+  // 生效的边目录来源：外部文件可能悄悄覆盖内置声明，面板必须说清楚用的是哪一份。
+  const catalogStatus = ref<ExtractionCatalogStatus | null>(null);
+  const catalogSourceLabel = computed(() => {
+    const status = catalogStatus.value;
+    if (!status) return "";
+    if (status.source !== "external") return `边目录：内置 ${status.edgeCount} 条`;
+    if (!status.externalEdgeCount && !status.externalCategoryCount) {
+      return `边目录：外部文件已就绪（未声明覆盖），生效 ${status.edgeCount} 条 · ${status.path}`;
+    }
+    return `边目录：外部文件声明 ${status.externalEdgeCount} 条，生效 ${status.edgeCount} 条 · ${status.path}`;
+  });
   const preview = ref<ExtractionPreview | null>(null);
   const preparing = ref(false);
   const running = ref(false);
@@ -144,6 +156,7 @@ export const useExtractionStore = defineStore("extraction", () => {
 
   function refresh(): Promise<void> {
     const token = ++generation;
+    if (visible.value) void loadCatalogStatus();
     preview.value = null;
     error.value = "";
     preparing.value = visible.value && allSeeds.value.length > 0;
@@ -327,6 +340,15 @@ export const useExtractionStore = defineStore("extraction", () => {
     }
   }
 
+  async function loadCatalogStatus(): Promise<void> {
+    try {
+      catalogStatus.value = (await ExtractionService.CatalogStatus()) ?? null;
+    } catch {
+      // 来源只是说明项；取不到就不显示，不影响提取本身。
+      catalogStatus.value = null;
+    }
+  }
+
   function applyPreset(id: string): void {
     preset.value = id;
     const chosen = presets.value.find((item) => item.id === id);
@@ -350,6 +372,7 @@ export const useExtractionStore = defineStore("extraction", () => {
     visible, title, seeds, extraSeeds, allSeeds, checked, layout, form, strict, lstSuggest, copyAssets,
     maxEntries, presets, preset, activePreset, applyPreset, preview, preparing, running, error, hint,
     relations, listRelation, relationOptions,
+    catalogStatus, catalogSourceLabel,
     selectedCount, canExport,
     open, close, refresh, scheduleRefresh, acceptExtraSeeds, execute, invalidate,
     toggleCategory, selectAllCategories,

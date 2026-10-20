@@ -18,7 +18,15 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as $models from "./models.js";
 
 /**
- * Categories lists the export categories declared by the shipped edge catalog.
+ * CatalogStatus reports which edge catalog is in effect, so the panel can say
+ * "external file, N edges" instead of leaving a silent override invisible.
+ */
+export function CatalogStatus(): $CancellablePromise<$models.ExtractionCatalogStatus> {
+    return $Call.ByID(812919397);
+}
+
+/**
+ * Categories lists the export categories declared by the effective edge catalog.
  */
 export function Categories(): $CancellablePromise<$models.ExtractionCategory[] | null> {
     return $Call.ByID(557544048);

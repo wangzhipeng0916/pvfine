@@ -69,6 +69,10 @@ type exportPlan struct {
 	generation uint64
 	loadID     uint64
 	headID     string
+	// catalogKey is the edge-catalog identity the preview was computed with. A
+	// different effective catalog can change the dependency closure, so a cached
+	// preview must not be reused across a catalog edit.
+	catalogKey string
 	created    time.Time
 	files      []exportFile
 	pkg        modpkg.Package
@@ -171,8 +175,9 @@ func (s *ExportService) prepare(request ExportRequest, mcpOwned bool) (result *E
 		mcpOwned: mcpOwned, request: request, archive: s.c.archive, repo: s.c.versionRepo,
 		revision: s.c.batchRevision, generation: s.c.archiveGeneration,
 		loadID: s.c.versionLoadID, headID: s.c.versionHead.ID, created: time.Now(),
-		preview: ExportPreview{ID: fmt.Sprint(exportSequence.Add(1)), Warnings: []string{}},
-		pkg:     modpkg.Package{Metadata: modpkg.Metadata{Name: request.Name, Version: request.Version}},
+		catalogKey: extractionCatalog.Key(),
+		preview:    ExportPreview{ID: fmt.Sprint(exportSequence.Add(1)), Warnings: []string{}},
+		pkg:        modpkg.Package{Metadata: modpkg.Metadata{Name: request.Name, Version: request.Version}},
 	}
 	format, _ := s.registry.Get(request.Format)
 	supportsDelete := false
@@ -335,7 +340,13 @@ func (s *ExportService) Release(id string) {
 }
 
 func (s *ExportService) validLocked(p *exportPlan) bool {
-	if p != nil && p.request.Source == "archive-diff" {
+	if p == nil {
+		return false
+	}
+	if p.catalogKey != extractionCatalog.Key() {
+		return false
+	}
+	if p.request.Source == "archive-diff" {
 		if time.Since(p.created) >= 10*time.Minute || p.archive != s.c.archive || p.generation != s.c.archiveGeneration || s.c.archiveDiff == nil {
 			return false
 		}

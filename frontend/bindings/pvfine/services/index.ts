@@ -99,6 +99,7 @@ export type {
     ExportPreview,
     ExportPreviewFile,
     ExportRequest,
+    ExtractionCatalogStatus,
     ExtractionCategory,
     ExtractionCategoryPreview,
     ExtractionPreset,

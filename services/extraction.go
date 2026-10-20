@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -36,13 +37,15 @@ func (s *ExtractionService) Presets() ([]ExtractionPreset, error) {
 	return out, nil
 }
 
-// shippedPresets loads the embedded preset document against the embedded catalog.
+// shippedPresets loads the embedded preset document against the effective
+// catalog (built-in plus the user's override), so a preset cannot name a
+// category the effective catalog does not declare.
 func shippedPresets() ([]extraction.Preset, error) {
-	catalog, err := extraction.LoadCatalog(extraction.EmbeddedEdges)
+	snapshot, err := extractionCatalog.Load()
 	if err != nil {
 		return nil, err
 	}
-	return extraction.LoadPresets(extraction.EmbeddedPresets, catalog)
+	return extraction.LoadPresets(extraction.EmbeddedPresets, snapshot.catalog)
 }
 
 // ErrExtractionStale reports that a preview was invalidated by an archive
@@ -229,17 +232,35 @@ func NewExtractionService(c *core, images ...*ImageService) *ExtractionService {
 	return service
 }
 
-// Categories lists the export categories declared by the shipped edge catalog.
+// Categories lists the export categories declared by the effective edge catalog.
 func (s *ExtractionService) Categories() ([]ExtractionCategory, error) {
-	catalog, err := extraction.LoadCatalog(extraction.EmbeddedEdges)
+	snapshot, err := extractionCatalog.Load()
 	if err != nil {
 		return nil, err
 	}
+	catalog := snapshot.catalog
 	out := make([]ExtractionCategory, 0, len(catalog.Categories()))
 	for _, cat := range catalog.Categories() {
 		out = append(out, ExtractionCategory{ID: cat.ID, Name: cat.Name, Order: cat.Order})
 	}
 	return out, nil
+}
+
+// CatalogStatus reports which edge catalog is in effect, so the panel can say
+// "external file, N edges" instead of leaving a silent override invisible.
+func (s *ExtractionService) CatalogStatus() (ExtractionCatalogStatus, error) {
+	return extractionCatalog.Status()
+}
+
+// ServiceStartup creates the empty override document when none exists, so the
+// file is discoverable without shipping a full copy of the builtin catalog
+// (which would pin every same-id edge at the version it was copied at). Failure
+// is logged, not fatal: extraction still works with the builtin catalog.
+func (s *ExtractionService) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
+	if err := extractionCatalog.EnsureFile(); err != nil {
+		developmentOrErrorLog(err, "[pvfine:extraction] 初始化外部边目录失败: %v", err)
+	}
+	return nil
 }
 
 // summarizeSeedFailures keeps the all-failed error bounded while still naming
@@ -325,6 +346,11 @@ func (s *ExtractionService) Prepare(request ExtractionRequest) (*ExtractionPrevi
 	}
 	indexes := make([]int32, 0, len(request.Seeds))
 	warnings := []string{}
+	// 外部边目录坏了不能拖垮提取：解析器已保住上一份可用目录，这里把原因说给用户，
+	// 否则"为什么新加的边没生效"只能靠猜。
+	if status, statusErr := extractionCatalog.Status(); statusErr == nil && status.Warning != "" {
+		warnings = append(warnings, "边目录："+status.Warning)
+	}
 	for _, seed := range request.Seeds {
 		hit, err := extraction.ResolveSeedIn(archive, scanner.RegistrySet(), seed, request.ListRelation)
 		if err != nil {
