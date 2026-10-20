@@ -31,6 +31,10 @@ export function ApplyWorldDropEdit(req: $models.WorldDropEditRequest): $Cancella
     return $Call.ByID(237649473, req);
 }
 
+export function ListSkillTrees(): $CancellablePromise<$models.SkillTreeRegistration[] | null> {
+    return $Call.ByID(2559201962);
+}
+
 export function ListSkills(): $CancellablePromise<$models.SkillEntry[] | null> {
     return $Call.ByID(3606807130);
 }
@@ -56,6 +60,13 @@ export function ReadShop(fileIndex: number, text: string): $CancellablePromise<$
 
 export function ReadSkill(fileIndex: number, text: string): $CancellablePromise<$models.SkillDocument | null> {
     return $Call.ByID(3027074897, fileIndex, text);
+}
+
+/**
+ * ReadSkillTree resolves only registered trees, using the current archive overlay.
+ */
+export function ReadSkillTree(job: string, kind: string): $CancellablePromise<$models.SkillTreeDocument | null> {
+    return $Call.ByID(2818122281, job, kind);
 }
 
 export function ReadUpgrade(fileIndex: number, text: string): $CancellablePromise<$models.UpgradeDocument | null> {

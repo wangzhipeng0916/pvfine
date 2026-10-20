@@ -875,6 +875,30 @@ export interface MCPStatus {
     "busy": boolean;
 }
 
+export interface ModImportFile {
+    "path": string;
+    "operation": string;
+    "overwrite": boolean;
+    "pairs": ModImportPair[] | null;
+}
+
+export interface ModImportPair {
+    "key": string;
+    "value": string;
+    "previous": string;
+    "overwrite": boolean;
+}
+
+export interface ModImportPreview {
+    "id": string;
+    "name": string;
+    "version": string;
+    "format": string;
+    "importedCount": number;
+    "overwrittenCount": number;
+    "files": ModImportFile[] | null;
+}
+
 /**
  * PlaceholderRef identifies the string-table entry a placeholder annotation
  * resolves through, so the editor can offer to rewrite — or create — that text.
@@ -1264,6 +1288,44 @@ export interface SkillPropertyBinding {
     "dynamic": boolean;
     "index": number;
     "multiplier": number;
+}
+
+export interface SkillTreeBranch {
+    "job": string;
+    "name": string;
+    "nodes": SkillTreeNode[] | null;
+}
+
+export interface SkillTreeDocument {
+    "fileIndex": number;
+    "path": string;
+    "common": SkillTreeNode[] | null;
+    "branches": SkillTreeBranch[] | null;
+    "issues": string[] | null;
+}
+
+export interface SkillTreeNode {
+    "id": number;
+    "x": number;
+    "y": number;
+    "positionKind": string;
+    "position": number[] | null;
+    "next": number[] | null;
+    "name": string;
+    "explain": string;
+    "path": string;
+    "fileIndex": number;
+    "icon": ImageReference | null;
+    "requiredLevel": number | null;
+}
+
+/**
+ * SkillTreeRegistration retains the job token: skill IDs are local to this job.
+ */
+export interface SkillTreeRegistration {
+    "job": string;
+    "kind": string;
+    "path": string;
 }
 
 export interface StoredFileSet {

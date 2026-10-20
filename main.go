@@ -160,6 +160,7 @@ func main() {
 			application.NewService(scriptService),
 			application.NewService(services.NewVersionService(core)),
 			application.NewService(exportService),
+			application.NewService(services.NewModImportService(core)),
 			application.NewService(services.NewAnnotationService(core)),
 			application.NewService(services.NewRenderingService(core)),
 			application.NewService(services.NewRuleService(core)),

@@ -181,12 +181,21 @@ func (s *ArchiveService) importPrepared(files []importFile, targetDir, mode stri
 	return s.importPreparedRevision(files, targetDir, mode, "", 0)
 }
 func (s *ArchiveService) importPreparedRevision(files []importFile, targetDir, mode, workspace string, expectedRevision uint64) (*ImportResult, error) {
-	var err error
+	return s.importPreparedChecked(files, targetDir, mode, "导入文件", func() error {
+		if workspace != "" && (s.c.mcpWorkspaceID != workspace || s.c.batchRevision != expectedRevision) {
+			return fmt.Errorf("STALE_IMPORT")
+		}
+		return nil
+	})
+}
 
+// check runs under the core lock, atomically with taking the staging snapshot.
+func (s *ArchiveService) importPreparedChecked(files []importFile, targetDir, mode, label string, check func() error) (*ImportResult, error) {
+	var err error
 	s.c.mu.Lock()
-	if workspace != "" && (s.c.mcpWorkspaceID != workspace || s.c.batchRevision != expectedRevision) {
+	if err := check(); err != nil {
 		s.c.mu.Unlock()
-		return nil, fmt.Errorf("STALE_IMPORT")
+		return nil, err
 	}
 
 	a := s.c.archive
@@ -232,6 +241,7 @@ func (s *ArchiveService) importPreparedRevision(files []importFile, targetDir, m
 	// projection without holding the core lock. A concurrent archive mutation
 	// invalidates this import before it is installed.
 	revision := s.c.batchRevision
+	repo, loadID, headID := s.c.versionRepo, s.c.versionLoadID, s.c.versionHead.ID
 	s.c.batchRevision++
 	incrementalSQLite := s.c.diskIndex != nil && s.c.diskIndex.entries != nil
 	s.c.mu.Unlock()
@@ -248,7 +258,7 @@ func (s *ArchiveService) importPreparedRevision(files []importFile, targetDir, m
 		s.c.mu.Unlock()
 		return nil, prepareErr
 	}
-	if s.c.archive != a || s.c.batchRevision != revision+1 {
+	if s.c.archive != a || s.c.batchRevision != revision+1 || s.c.versionRepo != repo || s.c.versionLoadID != loadID || s.c.versionHead.ID != headID {
 		closePreparedArchiveIndexes(prepared)
 		s.c.mu.Unlock()
 		return nil, ErrBatchPlanStale
@@ -275,7 +285,7 @@ func (s *ArchiveService) importPreparedRevision(files []importFile, targetDir, m
 		return nil, installErr
 	}
 	if s.c.versionRepo != nil {
-		if err := s.c.recordVersionMutationLocked("导入文件", before, after); err != nil {
+		if err := s.c.recordVersionMutationLocked(label, before, after); err != nil {
 			s.c.mu.Unlock()
 			return nil, err
 		}
