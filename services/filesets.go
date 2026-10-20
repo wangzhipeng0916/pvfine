@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"pvfine/internal/appdirs"
 )
 
 const fileSetDocumentVersion = 1
@@ -40,11 +42,11 @@ type FileSetService struct {
 }
 
 func NewFileSetService() *FileSetService {
-	configDir, err := os.UserConfigDir()
+	path, err := appdirs.DataFile("file-sets.json")
 	if err != nil {
-		return &FileSetService{initErr: fmt.Errorf("获取用户配置目录失败: %w", err)}
+		return &FileSetService{initErr: err}
 	}
-	return newFileSetService(filepath.Join(configDir, "pvfine", "file-sets.json"))
+	return newFileSetService(path)
 }
 
 func newFileSetService(path string) *FileSetService {

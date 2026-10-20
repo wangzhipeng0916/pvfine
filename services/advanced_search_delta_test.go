@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"pvfine/internal/appdirs"
 	"pvfine/internal/pvf"
 )
 
@@ -123,9 +124,7 @@ func TestAdvancedDeltaRollbackCanRetry(t *testing.T) {
 
 func TestAdvancedDeltaSavedOverlayCacheIsImmutableAndReusable(t *testing.T) {
 	cacheRoot := t.TempDir()
-	t.Setenv("LocalAppData", cacheRoot)
-	t.Setenv("XDG_CACHE_HOME", cacheRoot)
-	t.Setenv("HOME", cacheRoot)
+	t.Setenv(appdirs.CacheDirEnv, cacheRoot)
 	c := NewCore()
 	a := pvf.New()
 	mustAddText(t, a, "dir/first.equ", "[name]\n`baseline cached value`", pvf.TypeScript)

@@ -3,12 +3,12 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	annotationrules "pvfine/internal/annotations"
+	"pvfine/internal/appdirs"
 	"pvfine/internal/buildmode"
 	"pvfine/internal/ruleconfig"
 )
@@ -227,7 +227,7 @@ func (s *RuleService) activate(category string, snap *ruleconfig.Snapshot) error
 	return nil
 }
 func (c *core) initializeRuleStore() {
-	configDir, err := os.UserConfigDir()
+	userDir, err := appdirs.DataDir()
 	if err != nil {
 		c.ruleWarnings = append(c.ruleWarnings, err.Error())
 		return
@@ -238,7 +238,7 @@ func (c *core) initializeRuleStore() {
 			sourceDir = filepath.Dir(source)
 		}
 	}
-	c.loadInitialRules(ruleconfig.New(buildmode.Development, sourceDir, filepath.Join(configDir, "pvfine")))
+	c.loadInitialRules(ruleconfig.New(buildmode.Development, sourceDir, userDir))
 }
 
 func (c *core) loadInitialRules(store *ruleconfig.Store) {

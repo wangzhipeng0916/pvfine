@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"pvfine/internal/appdirs"
 	"pvfine/internal/mcpserver"
 )
 
@@ -88,8 +89,8 @@ type MCPService struct {
 }
 
 func NewMCPService(c *core, a *ArchiveService, e *EditorService, s *ScriptService, x *ExportService, declarations ...string) *MCPService {
-	root, err := os.UserConfigDir()
-	service := newMCPService(c, a, e, s, x, filepath.Join(root, "pvfine", "mcp.json"))
+	path, err := appdirs.DataFile("mcp.json")
+	service := newMCPService(c, a, e, s, x, path)
 	if len(declarations) > 0 {
 		service.apiDeclaration = declarations[0]
 	}

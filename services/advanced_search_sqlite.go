@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"pvfine/internal/appdirs"
 	"pvfine/internal/pvf"
 )
 
@@ -291,11 +292,10 @@ func (d *advancedSQLite) status(c *core, status AdvancedSearchIndexStatus) {
 
 func (d *advancedSQLite) build(c *core, a *pvf.Archive) error {
 	started := time.Now()
-	root, err := os.UserCacheDir()
+	root, err := appdirs.CacheDirIn("advanced-search")
 	if err != nil {
 		return err
 	}
-	root = filepath.Join(root, "pvfine", "advanced-search")
 	finishIO := holdCachePaths(root)
 	defer finishIO()
 	if err = os.MkdirAll(root, 0700); err != nil {

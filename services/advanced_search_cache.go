@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"pvfine/internal/appdirs"
 	"pvfine/internal/pvf"
 )
 
@@ -139,11 +140,10 @@ func (d *advancedSQLite) publishCurrentCache(c *core, a *pvf.Archive) {
 	if !clean {
 		return
 	}
-	root, err := os.UserCacheDir()
+	root, err := appdirs.CacheDirIn("advanced-search")
 	if err != nil {
 		return
 	}
-	root = filepath.Join(root, "pvfine", "advanced-search")
 	d.cachePath = filepath.Join(root, "refs-v4-"+digest)
 	if err = d.publishCache(root); err != nil && !os.IsExist(err) {
 		d.cachePath = ""

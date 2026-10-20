@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"pvfine/internal/appdirs"
 	"pvfine/internal/pvf"
 	scriptengine "pvfine/internal/script"
 	pvfversion "pvfine/internal/version"
@@ -69,14 +70,14 @@ type ScriptService struct {
 	initErr   error
 }
 
-// NewScriptService creates the script service under the same user config root
-// used by SettingsService and the other user-managed resources.
+// NewScriptService creates the script service under the same data root used by
+// SettingsService and the other user-managed resources.
 func NewScriptService(c *core, fileSets *FileSetService) *ScriptService {
-	directory, err := os.UserConfigDir()
+	directory, err := appdirs.DataDir()
 	if err != nil {
-		return &ScriptService{c: c, runtime: scriptengine.NewGojaRuntime(), fileSets: fileSets, initErr: fmt.Errorf("获取脚本目录失败: %w", err)}
+		return &ScriptService{c: c, runtime: scriptengine.NewGojaRuntime(), fileSets: fileSets, initErr: err}
 	}
-	return newScriptService(c, scriptengine.NewGojaRuntime(), filepath.Join(directory, "pvfine", "scripts"), fileSets)
+	return newScriptService(c, scriptengine.NewGojaRuntime(), filepath.Join(directory, "scripts"), fileSets)
 }
 
 func newScriptService(c *core, runtime scriptengine.ScriptRuntime, directory string, fileSets *FileSetService) *ScriptService {

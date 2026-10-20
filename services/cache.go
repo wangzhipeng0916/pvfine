@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"pvfine/internal/appdirs"
 )
 
 // CacheService reports and clears the caches the application keeps for itself:
@@ -160,11 +162,7 @@ func (s *CacheService) cacheRoot() (string, error) {
 	if s.rootOverride != "" {
 		return s.rootOverride, nil
 	}
-	root, err := os.UserCacheDir()
-	if err != nil {
-		return "", fmt.Errorf("获取用户缓存目录失败: %w", err)
-	}
-	return filepath.Join(root, "pvfine"), nil
+	return appdirs.CacheDir()
 }
 
 // inUsePaths lists the cache files the live session keeps open. SQLite sidecars

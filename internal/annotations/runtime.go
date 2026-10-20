@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	appconfig "pvfine/config"
+	"pvfine/internal/appdirs"
 )
 
 const sourceRelativePath = "config/annotations.json"
@@ -73,19 +74,11 @@ func LoadFile(path string) (*Engine, error) {
 
 // RuntimePath is the writable rule mirror used by packaged applications.
 func RuntimePath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("获取用户配置目录失败: %w", err)
-	}
-	return filepath.Join(configDir, "pvfine", "annotations.json"), nil
+	return appdirs.DataFile("annotations.json")
 }
 
 func RuntimeListsPath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("获取用户配置目录失败: %w", err)
-	}
-	return filepath.Join(configDir, "pvfine", "lists.json"), nil
+	return appdirs.DataFile("lists.json")
 }
 
 // FindSourcePath locates the repository rule file for local development.

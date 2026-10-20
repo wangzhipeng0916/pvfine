@@ -13,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	appconfig "pvfine/config"
+	"pvfine/internal/appdirs"
 )
 
 const (
@@ -89,12 +90,12 @@ type BookmarkService struct {
 // source file takes precedence during local development, mirroring the
 // existing annotation configuration behavior.
 func NewBookmarkService() *BookmarkService {
-	configDir, err := os.UserConfigDir()
+	path, err := appdirs.DataFile("bookmarks.json")
 	if err != nil {
-		return &BookmarkService{initErr: fmt.Errorf("获取用户配置目录失败: %w", err)}
+		return &BookmarkService{initErr: err}
 	}
 	sourcePath, _ := findBookmarkSourcePath()
-	return newBookmarkServiceWithSource(filepath.Join(configDir, "pvfine", "bookmarks.json"), sourcePath)
+	return newBookmarkServiceWithSource(path, sourcePath)
 }
 
 func newBookmarkService(path string) *BookmarkService {

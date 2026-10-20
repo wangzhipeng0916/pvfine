@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"pvfine/internal/appdirs"
 )
 
 const (
@@ -69,14 +71,10 @@ func DefaultAppSettings() AppSettings {
 }
 
 // DefaultAutosavePath is the backup location used when the user has not
-// configured one. It mirrors the search-index cache root so all derived state
-// of the application stays out of the game directory.
+// configured one. 容灾备份是持久数据，跟着 exe 走；缓存目录在临时盘上，重启即清，
+// 放那里等于把断电恢复能力丢掉。
 func DefaultAutosavePath() (string, error) {
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return "", fmt.Errorf("获取用户缓存目录失败: %w", err)
-	}
-	return filepath.Join(cacheDir, "pvfine", "autosave.pvf"), nil
+	return appdirs.DataFile("autosave.pvf")
 }
 
 type SettingsService struct {
@@ -86,11 +84,11 @@ type SettingsService struct {
 }
 
 func NewSettingsService() *SettingsService {
-	configDir, err := os.UserConfigDir()
+	path, err := appdirs.DataFile("settings.json")
 	if err != nil {
-		return &SettingsService{initErr: fmt.Errorf("获取用户配置目录失败: %w", err)}
+		return &SettingsService{initErr: err}
 	}
-	return newSettingsService(filepath.Join(configDir, "pvfine", "settings.json"))
+	return newSettingsService(path)
 }
 
 func newSettingsService(path string) *SettingsService {

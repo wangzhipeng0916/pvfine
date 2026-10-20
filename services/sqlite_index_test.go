@@ -12,6 +12,7 @@ import (
 
 	_ "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
+	"pvfine/internal/appdirs"
 	"pvfine/internal/pvf"
 )
 
@@ -327,9 +328,7 @@ SELECT 100,path,lower_path,name,lower_name,parent,size,data_type,change_kind FRO
 
 func TestSQLiteFilePathIndexUpgradesCachedArchive(t *testing.T) {
 	cacheDir := t.TempDir()
-	t.Setenv("LocalAppData", cacheDir)
-	t.Setenv("XDG_CACHE_HOME", cacheDir)
-	t.Setenv("HOME", cacheDir)
+	t.Setenv(appdirs.CacheDirEnv, cacheDir)
 	a := pvf.New()
 	if _, err := a.AddFileText("equip/a.equ", "[name]\n`A`", pvf.TypeScript); err != nil {
 		t.Fatal(err)

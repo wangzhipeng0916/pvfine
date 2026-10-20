@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"pvfine/internal/appdirs"
 	"pvfine/internal/pvf"
 )
 
@@ -138,12 +139,8 @@ func searchIndexCachePath(sourcePath, override string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return "", err
-	}
 	sum := sha256.Sum256([]byte(canonical))
-	return filepath.Join(cacheDir, "pvfine", "search-index", hex.EncodeToString(sum[:])+".json.gz"), nil
+	return appdirs.CacheFile("search-index", hex.EncodeToString(sum[:])+".json.gz")
 }
 
 func loadSearchIndexCache(a *pvf.Archive, specs []searchableListSpec, override string) (searchIndexCacheSnapshot, error) {

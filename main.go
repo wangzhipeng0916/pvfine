@@ -15,6 +15,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/updater"
 	githubupdater "github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 
+	"pvfine/internal/appdirs"
 	"pvfine/internal/buildmode"
 	"pvfine/services"
 )
@@ -126,6 +127,18 @@ func main() {
 	logOutput := services.CaptureLogs(log.Writer())
 	log.SetOutput(logOutput)
 	application.DefaultServiceOptions.MarshalError = services.LogServiceError
+	// 迁移必须在任何服务读配置之前完成，否则它们会在新位置造一份空的再也不要旧的。
+	if moved := appdirs.MigrateLegacyData(); len(moved) > 0 {
+		log.Printf("旧配置已迁移到数据目录: %v", moved)
+	}
+	// WebView2 默认按 exe 文件名在 %APPDATA% 下开数据目录，改个文件名就多一份；
+	// 它属于可丢弃缓存，归缓存目录。路径无效时 Wails 会弹窗并退出，所以解析
+	// 失败就留空，让它退回默认位置。
+	webviewDataPath, err := appdirs.CacheDir()
+	if err != nil {
+		webviewDataPath = ""
+		log.Printf("无法确定缓存目录，WebView2 数据沿用默认位置: %v", err)
+	}
 	settingsService := services.NewSettingsService()
 	core := services.NewCore(settingsService)
 	// The backup service attaches itself to the core so saving or closing the
@@ -182,6 +195,9 @@ func main() {
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
+		},
+		Windows: application.WindowsOptions{
+			WebviewUserDataPath: webviewDataPath,
 		},
 	})
 	services.ObserveLogEvents(app)

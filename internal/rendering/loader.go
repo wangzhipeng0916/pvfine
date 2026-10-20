@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	appconfig "pvfine/config"
+	"pvfine/internal/appdirs"
 )
 
 const sourceRelativePath = "config/rendering.json"
@@ -167,11 +168,7 @@ func validateGlob(pattern string) error {
 
 // RuntimePath is the writable rule location used by packaged applications.
 func RuntimePath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("获取用户配置目录失败: %w", err)
-	}
-	return filepath.Join(configDir, "pvfine", "rendering.json"), nil
+	return appdirs.DataFile("rendering.json")
 }
 
 // FindSourcePath locates the repository rendering file during development.

@@ -21,6 +21,7 @@ import (
 
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
+	"pvfine/internal/appdirs"
 	"pvfine/internal/pvf"
 )
 
@@ -412,12 +413,8 @@ func archiveIndexCachePath(a *pvf.Archive) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	root, err := os.UserCacheDir()
+	dir, err := appdirs.CacheDirIn("archive-index")
 	if err != nil {
-		return "", "", err
-	}
-	dir := filepath.Join(root, "pvfine", "archive-index")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", "", err
 	}
 	return filepath.Join(dir, identity+".db"), identity, nil

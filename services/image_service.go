@@ -17,6 +17,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"pvfine/internal/appdirs"
 	"pvfine/internal/npk"
 )
 
@@ -691,11 +692,7 @@ func isImagePathWithin(root, candidate string) bool {
 }
 
 func imageCachePath() (string, error) {
-	cache, err := os.UserCacheDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(cache, "pvfine", "npk-image-index.json"), nil
+	return appdirs.CacheFile("npk-image-index.json")
 }
 
 func loadImageIndexCache(directory string) (*imageSnapshot, error) {
