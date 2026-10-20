@@ -136,6 +136,14 @@ const tabs: TabDefinition[] = [
     icon: Wrench24Regular,
   },
   {
+    id: "docs",
+    label: "文档与更新日志",
+    category: "system",
+    title: "内置文档与更新日志",
+    subtitle: "随构建嵌入的功能列表与介绍、上游各版本记录，以及本分支相对上游的改动",
+    icon: Book24Regular,
+  },
+  {
     id: "about",
     label: "关于 pvfine",
     category: "system",
@@ -174,9 +182,8 @@ const clearingCache = ref(false);
 const appVersion = ref("");
 const appVersionLoading = ref(false);
 
-// 文档正文是构建时嵌入的 markdown，只在打开时才需要这个组件
-const DocsModal = defineAsyncComponent(() => import("./DocsModal.vue"));
-const docsVisible = ref(false);
+// 文档正文是构建时嵌入的 markdown，独立成 chunk，只在进入文档页时才加载
+const DocsPanel = defineAsyncComponent(() => import("./DocsPanel.vue"));
 
 const autosaveIntervalMinutes = computed(() =>
   Math.max(
@@ -1376,36 +1383,6 @@ function formatBytes(bytes: number): string {
                 </div>
               </section>
 
-              <!-- 文档与更新记录 -->
-              <section class="settings-group">
-                <div class="group-header">
-                  <div class="group-title">文档与更新记录</div>
-                  <div class="group-subtitle">
-                    随构建嵌入的功能列表与更新日志，离线可读，同时覆盖上游与本分支
-                  </div>
-                </div>
-
-                <div class="settings-card">
-                  <div class="setting-item">
-                    <div class="setting-item-icon">
-                      <NIcon :size="18"><Book24Regular /></NIcon>
-                    </div>
-                    <div class="setting-item-content">
-                      <div class="setting-item-label">功能列表与更新日志</div>
-                      <div class="setting-item-desc">
-                        README 核心特性、上游各版本记录，以及本分支相对上游的改动
-                      </div>
-                    </div>
-                    <div class="setting-item-control">
-                      <NButton size="small" secondary aria-label="查看文档" @click="docsVisible = true">
-                        <template #icon><NIcon><Book24Regular /></NIcon></template>
-                        查看文档
-                      </NButton>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
               <!-- 存储与缓存 -->
               <section class="settings-group">
                 <div class="group-header">
@@ -1535,6 +1512,11 @@ function formatBytes(bytes: number): string {
                   </div>
                 </div>
               </section>
+            </div>
+
+            <!-- 文档与更新日志：正文是独立 chunk，进这一页才加载 -->
+            <div v-if="activeTab === 'docs'" class="settings-tab-panel">
+              <DocsPanel />
             </div>
 
             <!-- Tab 7: 关于 -->
@@ -1780,7 +1762,6 @@ function formatBytes(bytes: number): string {
       </div>
     </NSpin>
   </NModal>
-  <DocsModal v-if="docsVisible" v-model:show="docsVisible" />
 </template>
 
 <style scoped>
