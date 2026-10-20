@@ -167,12 +167,31 @@ test("图片容器默认不拷，勾上才进请求", async () => {
   expect(lastRequest().copyAssets).toBe(true);
 });
 
-test("没有种子就不请求，并把原因写在错误里", async () => {
+test("没有种子就不请求，但那是引导不是错误", async () => {
   const store = useExtractionStore();
   void store.open([], "t");
   await nextTick();
   expect(mocks.Prepare).not.toHaveBeenCalled();
-  expect(store.error).toContain("种子");
+  // 从工具栏空手进来是要贴清单，红色 error 会让"刚打开的面板"看起来像坏了。
+  expect(store.error).toBe("");
+  expect(store.hint).toContain("种子");
+  expect(store.hint).toContain("清单所属表");
+});
+
+test("空种子打开后贴上清单就能出预览", async () => {
+  const store = useExtractionStore();
+  void store.open([], "t");
+  await nextTick();
+  expect(store.preview).toBeNull();
+  store.extraSeeds = ["46700\tequipment/character/fighter/avatar/aura/aura_46700.equ", "装备:10000"].join(String.fromCharCode(10));
+  store.listRelation = "装备";
+  store.acceptExtraSeeds();
+  await settle();
+  expect(store.hint).toBe("");
+  expect(store.preview).not.toBeNull();
+  const request = lastRequest();
+  expect(request.seeds.length).toBe(2);
+  expect(request.listRelation).toBe("装备");
 });
 
 test("在目录对话框里取消不应结束会话，也不该报错", async () => {

@@ -105,6 +105,8 @@ export const useExtractionStore = defineStore("extraction", () => {
   let queue: Promise<void> = Promise.resolve();
   let complete: ((dir: string) => void) | null = null;
   let debounce: ReturnType<typeof setTimeout> | null = null;
+  // 面板正在显示"还没有种子"这句引导；只有它自己该被下一次成功准备撤掉。
+  let guiding = false;
 
   const allSeeds = computed(() => [
     ...new Set([...seeds.value, ...parseExtraSeeds(extraSeeds.value)]),
@@ -147,9 +149,17 @@ export const useExtractionStore = defineStore("extraction", () => {
     preparing.value = visible.value && allSeeds.value.length > 0;
     if (!preparing.value) {
       if (visible.value) {
-        error.value = "请给出至少一个种子：文件树里选中，或在下面手输条目路径 / 关系名:ID";
+        // 空种子不是出错：从工具栏进来就是要贴一份清单，这里给的是引导。用 hint
+        // 而不是红色 error——"刚打开的面板"看起来像失败会让人以为功能坏了。
+        hint.value = "还没有种子：文件树里选中、编辑器里打开某个文件，或在下面贴清单——条目路径 / 关系名:ID / 纯 ID（先选「清单所属表」）/ 整段 lst 片段行";
+        guiding = true;
       }
       return Promise.resolve();
+    }
+    // 只撤自己那份引导；别的 hint（如"至少保留一个类别"的拒绝理由）不归这里管。
+    if (guiding) {
+      hint.value = "";
+      guiding = false;
     }
     const payload = buildRequest();
     // 串行化：改得很快时，旧请求不能反过来覆盖最新预览（服务端只缓存一份计划）。
@@ -220,6 +230,11 @@ export const useExtractionStore = defineStore("extraction", () => {
     if (debounce) {
       clearTimeout(debounce);
       debounce = null;
+    }
+    // 引导话属于这一次会话，别让它活到下一次打开（那时可能压根没显示过）。
+    if (guiding) {
+      hint.value = "";
+      guiding = false;
     }
     generation++;
     releasePreview();

@@ -296,8 +296,12 @@ async function onToolSelect(key: string): Promise<void> {
   if (key === "extraction") {
     if (!archive.open) { message.warning("需先打开 PVF 归档"); return; }
     const active = editor.activeTab?.path ?? "";
-    if (!active) { message.warning("请先在编辑器打开一个文件，或从文件树右键「提取依赖」"); return; }
-    const written = await extraction.open([active], "提取 " + active.split("/").pop() + " 的依赖");
+    // 没有活动文件也要进得来：面板本身支持空种子打开，MOD 作者手上常常是一整份
+    // 清单（纯 ID 列表或 lst 片段行），而不是恰好打开某一个文件。
+    const written = await extraction.open(
+      active ? [active] : [],
+      active ? "提取 " + active.split("/").pop() + " 的依赖" : "提取中心",
+    );
     if (written) message.success(`已提取到 ${written}`);
     return;
   }
