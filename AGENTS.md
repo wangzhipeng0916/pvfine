@@ -17,7 +17,7 @@
 - `cd frontend && npm ci`：按锁文件安装前端依赖。
 - `cd frontend && npm run build`：执行 `vue-tsc` 类型检查并生成生产前端资源。
 - `wails3 task build`：构建完整桌面应用；`go build ./...` 仅验证 Go 编译。
-- `./scripts/build-local.sh`：本地开发版构建，产物 `bin/pvfine`（Windows 上是 `pvfine.exe`）。除编译外还负责补 Go 代理、把临时目录挪出内存盘、还原 `wails3` 顺带产生的行尾与锁文件噪音。本地版版本号取占位 `0.0.0`，因此不接入更新频道；发版不要用它（发版走 release skill，正式版靠 `-X main.appVersion` 注入真实版本）。
+- `./scripts/build-local.sh`：本地开发版构建，产物 `bin/pvfine`（Windows 上是 `pvfine.exe`）。除编译外还负责补 Go 代理、把构建中间物放到系统 temp（本机是内存盘，重启即清，不在仓库盘留残渣）、还原 `wails3` 顺带产生的行尾与锁文件噪音。本地版版本号取占位 `0.0.0`，因此不接入更新频道；发版不要用它（发版走 release skill，正式版靠 `-X main.appVersion` 注入真实版本）。
 
 ## 编码风格与命名约定
 

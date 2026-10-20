@@ -8,11 +8,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 APP_NAME="${APP_NAME:-pvfine}"
-BUILD_TMP="${LOCAL_BUILD_TMP:-$(dirname "$ROOT")/.${APP_NAME}-build-tmp}"
 
-# TEMP 默认落在内存盘上，Go 编译与归档测试会撞 ENOSPC，改用与仓库同盘的目录。
-mkdir -p "$BUILD_TMP"
-export TMPDIR="$BUILD_TMP" TEMP="$BUILD_TMP" TMP="$BUILD_TMP"
+# 构建中间物放系统 temp（本机 /tmp 就是 R: 内存盘，重启即清，正适合这种一次性目录），
+# 不在仓库所在盘留残渣。Windows 程序读不懂 /tmp 这种 POSIX 路径，会被解析到当前盘根，
+# 所以在 MSYS 上先转成 R:/Temp/... 形式再导出。
+BUILD_TMP="${LOCAL_BUILD_TMP:-/tmp/${APP_NAME}-build}"
+if command -v cygpath >/dev/null 2>&1; then
+  BUILD_TMP="$(cygpath -m "${BUILD_TMP}")"
+fi
+mkdir -p "${BUILD_TMP}"
+export TMPDIR="${BUILD_TMP}" TEMP="${BUILD_TMP}" TMP="${BUILD_TMP}"
 
 # 本机不通 proxy.golang.org，调用方没指定时补国内镜像。
 export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
