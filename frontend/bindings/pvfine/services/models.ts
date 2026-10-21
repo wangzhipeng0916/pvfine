@@ -1065,6 +1065,41 @@ export interface IndexStatus {
 }
 
 /**
+ * ItemAppearance shares the item rarity and icon metadata used by shop views.
+ */
+export interface ItemAppearance {
+    "icon": ImageReference | null;
+    "rarity": number;
+}
+
+/**
+ * ItemCreateRequest carries all relevant editor drafts, so unsaved list entries
+ * participate in collision checks and survive registration.
+ */
+export interface ItemCreateRequest {
+    "path": string;
+    "id": string;
+    "name": string;
+    "text": string;
+    "revision": number;
+    "drafts": ShopDraft[] | null;
+}
+
+export interface ItemCreateResult {
+    "fileIndex": number;
+    "path": string;
+    "id": string;
+    "files": ShopEditedFile[] | null;
+}
+
+export interface ItemCreationCheck {
+    "revision": number;
+    "listPath": string;
+    "entryPath": string;
+    "conflicts": string[] | null;
+}
+
+/**
  * ListRegistrationTarget describes a list that can register one archive file.
  */
 export interface ListRegistrationTarget {

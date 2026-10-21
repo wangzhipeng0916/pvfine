@@ -31,6 +31,18 @@ export function ApplyWorldDropEdit(req: $models.WorldDropEditRequest): $Cancella
     return $Call.ByID(237649473, req);
 }
 
+export function CheckItemCreation(req: $models.ItemCreateRequest): $CancellablePromise<$models.ItemCreationCheck | null> {
+    return $Call.ByID(597891646, req);
+}
+
+/**
+ * CreateItem stages the script, LST and (where required) indexhash before
+ * publishing one version operation. No PVF disk write happens here.
+ */
+export function CreateItem(req: $models.ItemCreateRequest): $CancellablePromise<$models.ItemCreateResult | null> {
+    return $Call.ByID(3967276739, req);
+}
+
 /**
  * ListSkillTreeSkills lists registered IDs in the current job, including common skills.
  */
@@ -55,6 +67,28 @@ export function ReadForge(fileIndex: number, text: string): $CancellablePromise<
  */
 export function ReadItem(id: string, drafts: $models.ShopDraft[] | null): $CancellablePromise<$models.ShopItem | null> {
     return $Call.ByID(3301299, id, drafts);
+}
+
+/**
+ * ReadItemAppearances batches presentation metadata without reading item prices.
+ */
+export function ReadItemAppearances(ids: string[] | null): $CancellablePromise<{ [_ in string]?: $models.ItemAppearance | null } | null> {
+    return $Call.ByID(3207892534, ids);
+}
+
+/**
+ * ReadItemIcons reads only display metadata for the currently visible rewards.
+ */
+export function ReadItemIcons(ids: string[] | null): $CancellablePromise<{ [_ in string]?: $models.ImageReference | null } | null> {
+    return $Call.ByID(2935306771, ids);
+}
+
+/**
+ * ReadItemNames resolves equipment and stackable names using the same item
+ * relations and localized text as other archive views. Missing IDs are omitted.
+ */
+export function ReadItemNames(ids: string[] | null): $CancellablePromise<{ [_ in string]?: string } | null> {
+    return $Call.ByID(3212344113, ids);
 }
 
 /**

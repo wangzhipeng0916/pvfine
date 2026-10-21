@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { computed, markRaw, nextTick, reactive, ref } from "vue";
 import { Events } from "@wailsio/runtime";
 import { ArchiveService, EditorService, FileGUIService } from "../../bindings/pvfine/services";
-import type { ShopEditRequest, ShopEditResult, WorldDropEditRequest, WorldDropEditResult } from "../../bindings/pvfine/services/models";
+import type { ItemCreateRequest, ItemCreateResult, ShopEditRequest, ShopEditResult, WorldDropEditRequest, WorldDropEditResult } from "../../bindings/pvfine/services/models";
 import { useFileGUIStore } from "./fileGUI";
 import { createGUIModes } from "../gui/state";
 import type { EditorAnnotation, FileMeta, TreeTag, ImageReference } from "../../bindings/pvfine/services/models";
@@ -690,6 +690,38 @@ export const useEditorStore = defineStore("editor", () => {
     modes.set(index, mode);
   }
 
+  function itemCreationDrafts() {
+    return allFiles.value.filter(isTextDirty).map(tab => ({ fileIndex: tab.index, path: tab.path, text: tab.text }));
+  }
+
+  async function createItem(request: ItemCreateRequest): Promise<ItemCreateResult> {
+    assertMCPIdle();
+    if (saving.value || guiApplying.value) throw new Error("正在保存，请稍后再试");
+    const gui = useFileGUIStore(), epoch = gui.epoch;
+    saving.value = true;
+    guiApplying.value = true;
+    try {
+      await nextTick();
+      const result = await FileGUIService.CreateItem({ ...request, drafts: itemCreationDrafts() });
+      if (!result) throw new Error("未收到物品创建结果");
+      if (gui.epoch !== epoch) throw new Error("归档已切换，已忽略旧界面的创建结果");
+      for (const file of result.files ?? []) {
+        const tab = getFileDraft(file.fileIndex);
+        if (tab?.path === file.path && (tab.text === file.beforeText || tab.text === file.text)) {
+          tab.text = file.text;
+          tab.original = file.text;
+          tab.modified = true;
+        }
+      }
+      const refreshed = await Promise.allSettled([
+        refreshBatchFiles((result.files ?? []).map(file => file.fileIndex)),
+        useArchiveStore().refreshInfo(),
+      ]);
+      if (refreshed.some(r => r.status === 'rejected')) guiRefreshWarning.value = '物品已创建，部分界面刷新失败，可重新打开文件';
+      return result;
+    } finally { saving.value = false; guiApplying.value = false; }
+  }
+
   /** 提交商店 GUI 编辑:校验草稿一致性与归档代次,成功后同步受影响标签的文本。 */
   async function applyShopEdit(request: ShopEditRequest): Promise<ShopEditResult> {
     if (saving.value) throw new Error("正在保存，请稍后再试");
@@ -1323,6 +1355,8 @@ export const useEditorStore = defineStore("editor", () => {
     tabs,
     getFileDraft,
     openGUIFile,
+    itemCreationDrafts,
+    createItem,
     panes,
     layout,
     activeKey,
