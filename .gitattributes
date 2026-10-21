@@ -1,0 +1,11 @@
+# 统一行尾：所有文本文件在仓库与工作区都使用 LF。
+#
+# 没有这份声明时，"什么算文本、检出用什么行尾"由每台机器的 core.autocrlf 决定：
+#   input → 检出 LF；true → 检出 CRLF
+# 而 frontend/bindings 由 wails3 生成、固定写 LF，于是在 core.autocrlf=true 的机器上
+# 每次生成都会把 29 个文件整体标脏，git checkout -- 又会按 smudge 规则写回 CRLF，
+# 两边来回拉锯。声明 eol=lf 之后，检出与提交都与本机配置无关。
+#
+# 二进制（png/ico/ttf/bin 等）由 text=auto 的 NUL 检测排除，不受影响。
+# 仓库内没有 .bat/.cmd/.ps1，因此不需要为它们单独保留 CRLF。
+* text=auto eol=lf
