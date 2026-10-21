@@ -823,6 +823,168 @@ export interface ImageReference {
 }
 
 /**
+ * ImportCenterApplyResult reports what reached the archive.
+ */
+export interface ImportCenterApplyResult {
+    "written": number;
+    "overwritten": number;
+    "skipped": number;
+    "listRows": number;
+    "listDangling": number;
+    "changedPaths"?: string[] | null;
+}
+
+/**
+ * ImportCenterEntry is one row of the preview table.
+ */
+export interface ImportCenterEntry {
+    "archivePath": string;
+    "form": string;
+    "dataType": number;
+    "size": number;
+    "category": string;
+    "autoCompleted": boolean;
+    "state": string;
+    "selected": boolean;
+    "reason": string;
+}
+
+/**
+ * ImportCenterPage is one slice of the plan. Next < 0 means the list ended.
+ */
+export interface ImportCenterPage {
+    "entries": ImportCenterEntry[] | null;
+    "cursor": number;
+    "next": number;
+    "total": number;
+}
+
+/**
+ * ImportCenterPreview is the frozen plan's summary.
+ */
+export interface ImportCenterPreview {
+    "id": string;
+    "root": string;
+    "counts": ImportCounts;
+    "lists": ImportListCounts;
+    "warnings": string[] | null;
+}
+
+/**
+ * ImportCenterRequest identifies one import source. Only extraction products
+ * are supported in this version; a plain directory keeps using ImportFiles.
+ */
+export interface ImportCenterRequest {
+    "source": string;
+    "root": string;
+}
+
+/**
+ * ImportCounts summarises a plan by state.
+ */
+export interface ImportCounts {
+    "total": number;
+    "new": number;
+    "overwrite": number;
+    "unchanged": number;
+    "unsupported": number;
+    "invalid": number;
+    "selected": number;
+}
+
+/**
+ * ImportListCounts summarises the registry half of a plan.
+ */
+export interface ImportListCounts {
+    "total": number;
+    "new": number;
+    "registered": number;
+    "idTaken": number;
+    "duplicate": number;
+    "dangling": number;
+    "noTable": number;
+    "selected": number;
+}
+
+/**
+ * ImportListEntry is one registration row in the preview.
+ */
+export interface ImportListEntry {
+    "key": string;
+    "listPath": string;
+    "id": string;
+    "targetPath": string;
+    "state": string;
+    "resolution": string;
+    "selected": boolean;
+    "conflictOf": string;
+    "reason": string;
+}
+
+export interface ImportListPage {
+    "entries": ImportListEntry[] | null;
+    "cursor": number;
+    "next": number;
+    "total": number;
+}
+
+/**
+ * ImportNPKCounts summarises the prune plan.
+ */
+export interface ImportNPKCounts {
+    "containers": number;
+    "entries": number;
+    "identical": number;
+    "different": number;
+    "missing": number;
+    "unmapped": number;
+    "selected": number;
+    "totalBytes": number;
+    "prunedBytes": number;
+}
+
+/**
+ * ImportNPKEntry is one image inside one packaged container, judged against the
+ * target client directory.
+ */
+export interface ImportNPKEntry {
+    "key": string;
+    "container": string;
+    "name": string;
+    "size": number;
+    "targetNpk": string;
+
+    /**
+     * State: identical (同名同字节，可精简) / different (同名不同字节，是覆盖不是重复)
+     * / target-missing (目标没有，保留) / unmapped (目标目录不可用)
+     */
+    "state": string;
+    "selected": boolean;
+}
+
+export interface ImportNPKPage {
+    "entries": ImportNPKEntry[] | null;
+    "cursor": number;
+    "next": number;
+    "total": number;
+}
+
+export interface ImportNPKPreview {
+    "planId": string;
+    "targetDir": string;
+    "counts": ImportNPKCounts;
+    "warnings": string[] | null;
+}
+
+export interface ImportNPKResult {
+    "containers": number;
+    "written": number;
+    "pruned": number;
+    "prunedBytes": number;
+    "output": string;
+}
+
+/**
  * ImportPreview describes the validated changes without modifying the live
  * archive. Entries is capped for large directory imports; the counters remain
  * complete.

@@ -131,6 +131,12 @@ type ExportedFile struct {
 	// raw fallback happens only where no text form exists, and is recorded per
 	// file so a mixed tree is never a surprise.
 	Form string `json:"form"`
+	// DataType is the archive entry's own content type (1 script, 3 unicode
+	// text, others opaque). An importer cannot recover it reliably from the
+	// extension — a TypeUnicode entry without a .str/.nut name would be
+	// re-encoded as a script token stream and silently change type — so the
+	// export records it. Omitted (0) by exports predating this field.
+	DataType int32 `json:"dataType,omitempty"`
 }
 
 // ContentForm reports whether an entry can be written as text. Only the two
@@ -201,7 +207,14 @@ type Manifest struct {
 	Source        string `json:"source"`
 	Format        string `json:"format"`
 	ClientVersion string `json:"clientVersion"`
-	CatalogEdges  int    `json:"catalogEdges"`
+	// Subdir is the directory under the export root that holds the payloads
+	// ("pvf" by default). ExportedFile.Dest is relative to it, so a reader that
+	// assumes the default will miss every file in a CLI export that chose
+	// another name.
+	Subdir string `json:"subdir,omitempty"`
+	// CatalogEdges records how many edges the catalog had, so two exports can be
+	// told apart when the judgement changes without the archive changing.
+	CatalogEdges int `json:"catalogEdges"`
 	// Coverage is omitted when the walk did not collect the candidate queue: a
 	// ratio computed with a disabled denominator input is not a measurement, and
 	// printing "1" for it would read as "perfectly covered".
@@ -260,6 +273,7 @@ func Export(a *pvf.Archive, closure *Closure, opts ExportOptions) (ExportResult,
 		Source:        a.SourcePath(),
 		Format:        a.Format(),
 		ClientVersion: a.ClientVersion(),
+		Subdir:        subdir,
 		Counts:        map[string]any{},
 		VocabCoverage: closure.VocabCoverage(),
 		Files:         make([]ExportedFile, 0, len(closure.Nodes)),
@@ -340,7 +354,8 @@ func Export(a *pvf.Archive, closure *Closure, opts ExportOptions) (ExportResult,
 			return result, fmt.Errorf("写入 %s 失败: %w", node.Path, err)
 		}
 		entry := ExportedFile{Path: filepath.ToSlash(node.Path), Size: len(payload),
-			Via: node.Via.EdgeID, Depth: node.Depth, Dest: filepath.ToSlash(dest), Form: form}
+			Via: node.Via.EdgeID, Depth: node.Depth, Dest: filepath.ToSlash(dest), Form: form,
+			DataType: a.File(index).DataType}
 		if plan != nil {
 			entry.Category = plan.CategoryOf(index)
 			entry.AutoCompleted = plan.AutoCompleted(index)

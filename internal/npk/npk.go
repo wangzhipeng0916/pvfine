@@ -56,10 +56,15 @@ var npkFilenameKey = []byte("puchikon@neople dungeon and fighter " + strings.Rep
 
 // Entry is an NPK member. Offset and Size are absolute byte positions in the
 // NPK file, as stored by the format.
+//
+// RawName keeps the encrypted 256-byte name exactly as it appears in the entry
+// table so writers can reuse it verbatim. Decoding and re-encoding cannot
+// round-trip every name because decodeNPKName trims surrounding spaces.
 type Entry struct {
-	Name   string `json:"name"`
-	Offset int64  `json:"offset"`
-	Size   int64  `json:"size"`
+	Name    string    `json:"name"`
+	RawName [256]byte `json:"-"`
+	Offset  int64     `json:"offset"`
+	Size    int64     `json:"size"`
 }
 
 // NPK is the cheap, metadata-only representation of an NPK file.
@@ -110,7 +115,7 @@ func Open(path string) (*NPK, error) {
 		if _, err := file.ReadAt(encrypted[:], pos+8); err != nil {
 			return nil, fmt.Errorf("%w: 读取文件名失败: %v", ErrNotNPK, err)
 		}
-		entries = append(entries, Entry{Name: decodeNPKName(encrypted[:]), Offset: offset, Size: size})
+		entries = append(entries, Entry{Name: decodeNPKName(encrypted[:]), RawName: encrypted, Offset: offset, Size: size})
 		pos += 264
 	}
 	return &NPK{Path: path, Size: info.Size(), Entries: entries}, nil

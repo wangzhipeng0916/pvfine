@@ -19,6 +19,7 @@ import BatchProcessModal from "./components/BatchProcessModal.vue";
 import ImportModal from "./components/ImportModal.vue";
 import ExportModal from "./components/ExportModal.vue";
 import ExtractionCenterModal from "./components/ExtractionCenterModal.vue";
+import ImportCenterModal from "./components/ImportCenterModal.vue";
 import VersionPanel from "./components/VersionPanel.vue";
 import DropRateEditorModal from "./components/DropRateEditorModal.vue";
 import RuleEditorModal from "./components/RuleEditorModal.vue";
@@ -240,6 +241,7 @@ function executeShortcut(command: ShortcutCommandId): void {
           <ImportModal />
           <ExportModal />
           <ExtractionCenterModal />
+          <ImportCenterModal />
           <VersionPanel />
           <DropRateEditorModal />
           <SettingsModal />

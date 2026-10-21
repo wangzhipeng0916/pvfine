@@ -1588,60 +1588,18 @@ func cloneTreeTags(tags []TreeTag) []TreeTag {
 	return cloned
 }
 
+// 这三个函数已下沉到 internal/pvf：登记、导出依赖与导入中心必须用同一套 90/110
+// 判定，各留一份迟早漂。这里保留同名薄封装，调用点无需改动。
 func resolveListPath(listPath, relative string) (string, bool) {
-	relative = strings.TrimSpace(strings.ReplaceAll(relative, "\\", "/"))
-	if relative == "" || strings.HasPrefix(relative, "/") {
-		return "", false
-	}
-	resolved := path.Clean(path.Join(path.Dir(listPath), relative))
-	if resolved == "." || resolved == ".." || strings.HasPrefix(resolved, "../") {
-		return "", false
-	}
-	return resolved, true
+	return pvf.ResolveListPath(listPath, relative)
 }
 
 func findListTargetInArchive(a *pvf.Archive, listPath, relative string) (string, int32, bool) {
-	candidates, ok := listPathCandidates(listPath, relative)
-	if !ok {
-		return "", 0, false
-	}
-	for _, candidate := range candidates {
-		index, ok := a.Find(candidate)
-		if ok {
-			return a.Path(index), index, true
-		}
-	}
-	return "", 0, false
+	return pvf.FindListTarget(a, listPath, relative)
 }
 
-// listPathCandidates returns the archive paths a `.lst` entry may denote. The
-// 90US layout stores entry paths relative to the list's own directory
-// (`equipment/equipment.lst` + `character/a.equ`), while the 110US layout
-// stores archive-root-relative paths (`list/equipment.lst` +
-// `equipment/character/a.equ`). Both readings are tried, each also with the
-// `(r)` override file name the client falls back to.
 func listPathCandidates(listPath, relative string) ([]string, bool) {
-	targetPath, ok := resolveListPath(listPath, relative)
-	if !ok {
-		return nil, false
-	}
-	candidates := []string{targetPath}
-	appendOverride := func(candidate string) {
-		base := path.Base(candidate)
-		if strings.HasPrefix(strings.ToLower(base), "(r)") {
-			return
-		}
-		candidates = append(candidates, path.Join(path.Dir(candidate), "(r)"+base))
-	}
-	appendOverride(targetPath)
-	root := strings.Trim(strings.ReplaceAll(strings.TrimSpace(relative), "\\", "/"), "/")
-	if root != "" && !strings.Contains(root, "..") {
-		if cleaned := path.Clean(root); cleaned != "." && cleaned != targetPath {
-			candidates = append(candidates, cleaned)
-			appendOverride(cleaned)
-		}
-	}
-	return candidates, true
+	return pvf.ListPathCandidates(listPath, relative)
 }
 
 func pathBase(p string) string {

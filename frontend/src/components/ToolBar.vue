@@ -4,6 +4,7 @@ import { useMessage } from "naive-ui";
 import {
   ArchiveMultiple24Regular,
   ArrowDownload24Regular,
+  ArrowImport24Regular,
   Code24Regular,
   Dismiss24Regular,
   DocumentSync24Regular,
@@ -41,6 +42,7 @@ import { useVersionStore } from "../stores/version";
 import { useScriptStore } from "../stores/script";
 import { useDropRateStore } from "../stores/dropRate";
 import { useExtractionStore } from "../stores/extraction";
+import { useImportCenterStore } from "../stores/importCenter";
 import IndexHashRegistrationModal from "./IndexHashRegistrationModal.vue";
 import { effectiveBinding, formatBinding, type ShortcutCommandId } from "../shortcuts";
 
@@ -56,6 +58,7 @@ const archiveDiff = useArchiveDiffStore();
 const script = useScriptStore();
 const dropRate = useDropRateStore();
 const extraction = useExtractionStore();
+const importCenter = useImportCenterStore();
 const message = useMessage();
 const dialog = useDialog();
 const hashRegistrationVisible = ref(false);
@@ -148,6 +151,12 @@ const toolOptions = computed(() => [
     key: "extraction",
     disabled: !archive.open || archive.loading,
     icon: () => h(NIcon, null, { default: () => h(Open24Regular) }),
+  },
+  {
+    label: "导入中心",
+    key: "import-center",
+    disabled: !archive.open || archive.loading,
+    icon: () => h(NIcon, null, { default: () => h(ArrowImport24Regular) }),
   },
   {
     label: "归档对比",
@@ -303,6 +312,11 @@ async function onToolSelect(key: string): Promise<void> {
       active ? "提取 " + active.split("/").pop() + " 的依赖" : "提取中心",
     );
     if (written) message.success(`已提取到 ${written}`);
+    return;
+  }
+  if (key === "import-center") {
+    if (!archive.open) { message.warning("需先打开 PVF 归档"); return; }
+    importCenter.open();
     return;
   }
   if (key === "forge") {

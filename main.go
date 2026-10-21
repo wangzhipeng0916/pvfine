@@ -193,6 +193,7 @@ func main() {
 			application.NewService(mcpService),
 			application.NewService(services.NewSkillService()),
 			application.NewService(services.NewExtractionService(core)),
+			application.NewService(services.NewImportCenterService(core)),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

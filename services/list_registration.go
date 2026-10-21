@@ -426,16 +426,7 @@ func contentSnapshot(a *pvf.Archive, paths []string) (pvfversion.ContentSnapshot
 }
 
 func listEntryPath(listPath, filePath string) string {
-	listPath = strings.Trim(strings.ReplaceAll(listPath, "\\", "/"), "/")
-	filePath = strings.Trim(strings.ReplaceAll(filePath, "\\", "/"), "/")
-	dir := path.Dir(listPath)
-	if dir != "." && !strings.EqualFold(dir, "list") {
-		prefix := dir + "/"
-		if len(filePath) >= len(prefix) && strings.EqualFold(filePath[:len(prefix)], prefix) {
-			return filePath[len(prefix):]
-		}
-	}
-	return filePath
+	return pvf.ListEntryPath(listPath, filePath)
 }
 
 func nextListID(pairs []pvf.ListPair, requiresIndexHash bool) (string, error) {

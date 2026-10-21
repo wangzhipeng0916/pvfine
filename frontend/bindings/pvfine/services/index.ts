@@ -15,6 +15,7 @@ import * as ExtractionService from "./extractionservice.js";
 import * as FileGUIService from "./fileguiservice.js";
 import * as FileSetService from "./filesetservice.js";
 import * as ImageService from "./imageservice.js";
+import * as ImportCenterService from "./importcenterservice.js";
 import * as MCPService from "./mcpservice.js";
 import * as ModImportService from "./modimportservice.js";
 import * as PreviewService from "./previewservice.js";
@@ -41,6 +42,7 @@ export {
     FileGUIService,
     FileSetService,
     ImageService,
+    ImportCenterService,
     MCPService,
     ModImportService,
     PreviewService,
@@ -117,6 +119,20 @@ export type {
     ImageData,
     ImageIndexStatus,
     ImageReference,
+    ImportCenterApplyResult,
+    ImportCenterEntry,
+    ImportCenterPage,
+    ImportCenterPreview,
+    ImportCenterRequest,
+    ImportCounts,
+    ImportListCounts,
+    ImportListEntry,
+    ImportListPage,
+    ImportNPKCounts,
+    ImportNPKEntry,
+    ImportNPKPage,
+    ImportNPKPreview,
+    ImportNPKResult,
     ImportPreview,
     ImportPreviewEntry,
     ImportResult,
